@@ -67,6 +67,7 @@ import {
   type ManifestStoreConfig,
   type Transport,
 } from './manifest-store.js'
+import { loadTicketConfig, makeSink, TicketEmitter, type TicketSink } from './ticket.js'
 import type { AgruneManifest } from './manifest.js'
 import {
   shouldUseKeystrokeFill,
@@ -162,17 +163,24 @@ export class BrowserSession {
   private readonly manifestStore: ManifestStoreConfig
   /** Injectable store transport (tests). Undefined → real http/https transport. */
   private readonly storeTransport: Transport | undefined
+  /** §12.3 drift-ticket escalation; undefined unless AGRUNE_TICKET_SINK is set + parseable. */
+  private readonly ticketEmitter: TicketEmitter | undefined
 
   constructor(
     private readonly headless: boolean,
     private readonly attachEndpoint?: string,
     storeTransport?: Transport,
+    ticketSink?: TicketSink,
   ) {
     this.attached = typeof attachEndpoint === 'string' && attachEndpoint.length > 0
     this.plugins = loadPluginConfig()
     this.selfHealHook = this.plugins.selfHeal ? createSelfHealHook() : undefined
     this.manifestStore = loadManifestStoreConfig()
     this.storeTransport = storeTransport
+
+    const ticketCfg = loadTicketConfig()
+    const sink = ticketSink ?? (ticketCfg.sinkSpec ? makeSink(ticketCfg.sinkSpec) : null)
+    this.ticketEmitter = ticketCfg.enabled && sink ? new TicketEmitter(ticketCfg, sink) : undefined
   }
 
   async start(): Promise<void> {
@@ -454,7 +462,30 @@ export class BrowserSession {
       .locator('body')
       .ariaSnapshot()
       .catch(() => undefined)
+    // §12.3: store recovery missed → escalate a durable, deduped+debounced ticket so the manifest
+    // gets repaired (§12.4). Best-effort; it must never block or break the read.
+    await this.maybeEmitTickets(entry, drift, ariaFallback).catch(() => undefined)
     return ariaFallback ? { drift, ariaFallback } : { drift }
+  }
+
+  /** §12.3: file a ticket per drifted group (the emitter dedups + debounces). Never throws. */
+  private async maybeEmitTickets(entry: TabEntry, drift: DriftReport, ariaFallback?: string): Promise<void> {
+    if (!this.ticketEmitter) return
+    const url = entry.page.url()
+    const origin = originOf(url) ?? url
+    for (const g of drift.groups) {
+      await this.ticketEmitter.observe({
+        origin,
+        url,
+        groupId: g.groupId,
+        ...(g.groupName ? { groupName: g.groupName } : {}),
+        missingTargetIds: g.missingTargetIds,
+        baseline: g.baseline,
+        resolved: g.resolved,
+        total: g.total,
+        ...(ariaFallback ? { ariaFallback } : {}),
+      })
+    }
   }
 
   /**

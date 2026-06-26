@@ -1296,7 +1296,7 @@ LOC budget per module: see §2.5.
 | Target-level drift (one ref) | §8.1 self-heal — deterministic, in-process, instant | **BUILT** |
 | Screen-level drift | §12.2 fetch the latest manifest from the store — automated, seconds | **BUILT** (B1) |
 | Store miss (no fresh manifest) | §8.7 a11y escape-hatch keeps the agent working NOW, degraded | **BUILT** |
-| Durable fix needed | §12.3 ticket → §12.4 autonomous repair → verify → publish | ROADMAP |
+| Durable fix needed | §12.3 ticket (**BUILT, B2**) → §12.4 autonomous repair → verify → publish | §12.3 BUILT / §12.4 ROADMAP |
 
 **Invariant: the system NEVER hard-stops.** It degrades to a11y-level operation (the agent keeps going) while the durable fix is in flight.
 
@@ -1308,12 +1308,12 @@ LOC budget per module: see §2.5.
 - The store is the **publish target** for §12.4 repairs — everything downstream depends on it, so it is built FIRST.
 - **SECURITY (load-bearing, `manifest-store.ts`):** `keyFrom` is compiled via `new Function` (§3.11.4) — a remote manifest is a **code-injection surface**. A store artifact is a signed envelope `{ payloadJson, alg:'ed25519', signature }`; the ed25519 signature covers the exact UTF-8 bytes of `payloadJson`, which decodes to `{ manifest, meta?, keyId? }` — so **everything trusted is under the signature** (provenance/keyId cannot be forged by a MITM). Verified only against the **pinned** public key (`AGRUNE_MANIFEST_STORE_KEY`, ed25519 only; non-ed25519 → fail closed). Unsigned / wrong-key / tampered / unpinned / schema-invalid / oversize artifacts are rejected and never swapped in. Transport is signature-trusted (http allowed for local/testing; a MITM over http can only deny/replay, never forge) with a body-size cap + absolute deadline. Activated only when both `AGRUNE_MANIFEST_STORE` (base URL) and `AGRUNE_MANIFEST_STORE_KEY` are set.
 
-### 12.3 Ticket emission (Tier 3 escalation)
+### 12.3 Ticket emission (Tier 3 escalation) — **BUILT (B2, `ticket.ts`)**
 
-- **Payload is ~90% the §8.7 `DriftReport`** (group, missing targetIds, captured a11y) + screenshot + URL + app version. Cheap to generate because the sensor already produced it.
-- **Sink is PLUGGABLE:** GitHub issue | Linear | webhook.
-- **Dedup** by fingerprint `hash(origin, groupId, sorted(missingTargetIds))` → repeated drift = one OPEN ticket, not one-per-load.
-- **Debounce:** emit only after drift is CONFIRMED across N loads / M seconds. The §8.7 per-call detection is correct for the inline a11y fallback but too twitchy for escalation (ticket spam + needless re-fetches).
+- **Trigger:** `driftCheck` confirms drift AND store recovery missed (§12.2) → `BrowserSession.maybeEmitTickets` files one ticket per drifted group. Best-effort, awaited-but-guarded — escalation never blocks or breaks the read.
+- **Payload (`EmittedTicket`)** is ~90% the §8.7 `GroupDrift` (groupId, missing targetIds, baseline/resolved/total) + origin + url + the captured a11y (`ariaFallback`) + fingerprint + observation metadata. Cheap — the sensor already produced it. (Screenshot + derived app version: future.)
+- **Sink is PLUGGABLE** via `AGRUNE_TICKET_SINK`: `file:/path.jsonl` (default/dev) | `http(s)://…` webhook (→ GitHub/Linear/Slack via a relay; native adapters slot into `makeSink` later). Unknown spec → disabled.
+- **Dedup** by `fingerprintFor(origin, groupId, sorted(missingTargetIds))` → repeated drift = one OPEN ticket, not one-per-load. **Debounce:** emit only after the breakage is observed `AGRUNE_TICKET_MIN_OBS` times (default 2) across `AGRUNE_TICKET_MIN_WINDOW_MS` (default 1500ms) — the §8.7 per-call signal is right for the inline a11y fallback but too twitchy for escalation. A sink failure is retried on a later observation after a 60s cooldown (no hammering a broken sink).
 
 ### 12.4 Autonomous repair harness (the agent)
 
