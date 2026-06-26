@@ -1,6 +1,6 @@
 ---
 name: agrune
-description: Drive a real browser from the terminal via stable, app-authored manifest target-refs. The manifest-driven peer of @playwright/cli — same engine and verbs, but you act on a compact, stable target model instead of a raw accessibility tree.
+description: Drive and automate a real Chromium browser from the terminal — open pages, navigate, click, fill forms, run multi-step web flows, and read live rendered content — addressing elements by stable, app-authored manifest target-refs instead of a raw accessibility tree. The manifest-driven peer of @playwright/cli (same engine and verbs). Use this whenever a task means operating a live web app or browser from the command line (logging in, filling a form, clicking through a UI, scraping rendered content, reproducing a browser bug, end-to-end web automation), even if the user never says "agrune" — especially when the page exposes window.__agrune_manifest__. Not for writing @playwright/test test files or unit tests.
 allowed-tools: Bash(agrune:*) Bash(npx:*)
 ---
 
