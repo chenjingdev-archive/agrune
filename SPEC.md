@@ -1390,7 +1390,7 @@ The CLI carries the daemon address as a single opaque string `endpoint` / `baseU
 - `http://<host>:<port>` — TCP fallback (explicit `--host`/`--port`). Client sets `options.host = url.hostname`, `options.port = url.port ? Number(url.port) : 80`.
 - Detection: `isSocketEndpoint(endpoint) === endpoint.startsWith('unix:')`; `socketPathFromEndpoint = endpoint.slice('unix:'.length)`.
 
-Default socket path (Unix): `~/.agrune/run/<sha256(realpath(cwd)).hex.slice(0,12)>/daemon.sock`. Win32 named pipe: `\\.\pipe\agrune-<hash>`. Override precedence in `getDaemonEndpoint`: `--host`/`--port` (→ `http://...`, `explicit:true`) > `AGRUNE_DAEMON_SOCKET` env (→ `unix:<trimmed>`, `explicit:true`) > default workspace socket (`unix:...`, `explicit:false`). When `explicit:false`, the client auto-spawns a detached `agrune daemon run` daemon on first request (see §A.1.9).
+Default socket path (Unix): `~/.agrune/run/<sha256(realpath(cwd)).hex.slice(0,12)>/daemon.sock`. Win32 named pipe: `\\.\pipe\agrune-<hash>`. Override precedence in `getDaemonEndpoint`: `--host`/`--port` (→ `http://...`, `explicit:true` — a daemon someone else manages, never auto-spawned) > `AGRUNE_DAEMON_SOCKET` env (→ `unix:<trimmed>`, `explicit:false` — a LOCAL per-workspace override we bind ourselves) > default workspace socket (`unix:...`, `explicit:false`). When `explicit:false`, the client auto-spawns a detached `agrune daemon run` daemon on first request (see §A.1.9); the spawned child inherits the env var and binds the same socket. A custom socket also keys its own run dir (session file + spawn lock) so it never collides with the default per-workspace daemon.
 
 ### A.1.3 Request framing (client `rawRequest`)
 - **Method**: `init.method ?? 'GET'`.
