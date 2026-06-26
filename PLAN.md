@@ -7,6 +7,24 @@ files, tests, risk, effort, dependencies.
 
 Effort key: **S** ≈ ≤2h · **M** ≈ a day · **L** ≈ multi-day.
 
+## STATUS — ALL SHIPPED ✅ (143 tests green; verify:no-internals green)
+
+| Item | What | Commit |
+|---|---|---|
+| A1 | `scroll <ref>` verb | `b4d8238` |
+| A2 | auto-spawn honors custom socket | `b4d8238` |
+| A3 | skill description triggering | `bb0b2ef` |
+| B1a | signed+pinned store client (adversarial-reviewed) | `8f1e446` |
+| B1b | store wired into drift recovery | `23bbac4` |
+| B2 | drift-ticket escalation | `0f259da` |
+| B3 | repair gate + loop (propose→verify→publish) | `fe03fe6` |
+
+The §12 sense → fetch → escalate → repair → verify → publish loop is now closed in code, with
+the verification gate mechanical (a wrong proposal cannot be published). The original plans
+below are kept as the design record.
+
+---
+
 ---
 
 ## Sequencing (recommended)
