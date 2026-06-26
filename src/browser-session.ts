@@ -62,6 +62,13 @@ import {
 } from './plugins/feedback.js'
 import { detectManifestDrift, updateDriftBaseline, type DriftReport } from './plugins/drift.js'
 import {
+  loadManifestStoreConfig,
+  fetchLatestManifest,
+  type ManifestStoreConfig,
+  type Transport,
+} from './manifest-store.js'
+import type { AgruneManifest } from './manifest.js'
+import {
   shouldUseKeystrokeFill,
   fillWithKeystrokes,
   applyFillFormField,
@@ -80,6 +87,23 @@ import {
 interface InternalNetworkRequest extends NetworkRequestSummary {
   request: PWRequest
   response?: PWResponse
+}
+
+/** Page origin for store addressing; null for opaque origins (data:, about:blank) where a store
+ * lookup is meaningless. */
+function originOf(url: string): string | null {
+  try {
+    const o = new URL(url).origin
+    return o && o !== 'null' ? o : null
+  } catch {
+    return null
+  }
+}
+
+/** Count of DIRECT (non-repeat) targets the DOM currently resolves — the measure a store swap must
+ * strictly improve to be adopted (§12.2). */
+function resolvedCount(s: PageSnapshot): number {
+  return s.targets.filter((t) => !t.repeatInstance && t.domResolved === true).length
 }
 
 interface DialogWaiter {
@@ -110,6 +134,11 @@ interface TabEntry {
   /** §8.7 drift baseline: peak resolved-target count seen per `${url}\t${groupId}` — drift is a
    * regression from this high-water-mark, not merely a low ratio (avoids wizard false positives). */
   driftBaseline: Map<string, number>
+  /** §12.2 store-fetched manifest overriding the page-injected one, keyed by page origin. Set when
+   * drift is recovered via the store; consulted by every manifest-load path for that origin. */
+  manifestOverride: Map<string, AgruneManifest>
+  /** §12.2 last ETag seen per origin, for conditional store re-fetches (If-None-Match). */
+  manifestEtag: Map<string, string>
 }
 
 export interface ClickOptions {
@@ -130,14 +159,20 @@ export class BrowserSession {
   private readonly plugins: PluginConfig
   private readonly selfHealHook: ReturnType<typeof createSelfHealHook> | undefined
   private readonly unmappedRegistry = new Map<number, Map<string, UnmappedTarget>>()
+  private readonly manifestStore: ManifestStoreConfig
+  /** Injectable store transport (tests). Undefined → real http/https transport. */
+  private readonly storeTransport: Transport | undefined
 
   constructor(
     private readonly headless: boolean,
     private readonly attachEndpoint?: string,
+    storeTransport?: Transport,
   ) {
     this.attached = typeof attachEndpoint === 'string' && attachEndpoint.length > 0
     this.plugins = loadPluginConfig()
     this.selfHealHook = this.plugins.selfHeal ? createSelfHealHook() : undefined
+    this.manifestStore = loadManifestStoreConfig()
+    this.storeTransport = storeTransport
   }
 
   async start(): Promise<void> {
@@ -198,6 +233,8 @@ export class BrowserSession {
       fileChooserWaiters: [],
       fileChooserActions: new Map(),
       driftBaseline: new Map(),
+      manifestOverride: new Map(),
+      manifestEtag: new Map(),
     }
     this.tabs.set(id, entry)
     this.order.push(id)
@@ -345,20 +382,32 @@ export class BrowserSession {
 
   async snapshot(tabId?: number): Promise<PageSnapshot> {
     const entry = this.entry(tabId)
-    const snapshot = await refreshSnapshot(entry.page, entry.store)
+    const override = this.activeOverride(entry)
+    const snapshot = await refreshSnapshot(entry.page, entry.store, override)
     if (!this.plugins.unmapped) return snapshot
     // unmapped plugin (§8.3): graft on-screen controls not covered by the manifest. Does NOT
     // bump the snapshot version.
-    let manifest
-    try {
-      manifest = await loadManifestFromPage(entry.page)
-    } catch {
-      manifest = { version: 3 as const, groups: [] }
+    let manifest: AgruneManifest
+    if (override) {
+      manifest = override
+    } else {
+      try {
+        manifest = await loadManifestFromPage(entry.page)
+      } catch {
+        manifest = { version: 3, groups: [] }
+      }
     }
     const unmapped = await detectUnmapped(entry.page, manifest).catch(() => [])
     const { snapshot: augmented, registry } = augmentWithUnmapped(snapshot, unmapped)
     this.unmappedRegistry.set(entry.id, registry)
     return augmented
+  }
+
+  /** §12.2: the store-fetched manifest override active for this tab's current origin, if any. */
+  private activeOverride(entry: TabEntry): AgruneManifest | undefined {
+    if (!this.manifestStore.enabled || entry.manifestOverride.size === 0) return undefined
+    const origin = originOf(entry.page.url())
+    return origin ? entry.manifestOverride.get(origin) : undefined
   }
 
   async ariaSnapshot(
@@ -370,15 +419,17 @@ export class BrowserSession {
   }
 
   /**
-   * Manifest-drift check (§8.6). Pure analysis over the snapshot the caller already built — no
-   * extra DOM work. On CONFIRMED drift only, also captures the full-page a11y (the escape hatch)
-   * so the agent can re-orient in the same response. Healthy screens pay nothing. Returns null
-   * when the plugin is off or no drift is detected.
+   * Manifest-drift check (§8.6 sensor + §12.2 recovery). Pure analysis over the snapshot the caller
+   * already built — no extra DOM work. On CONFIRMED drift: first try to RECOVER by fetching a fresh
+   * signed manifest from the store (§12.2) and re-snapshotting; if that resolves the regression,
+   * return the recovered snapshot. Otherwise capture the full-page a11y escape hatch (§8.6) so the
+   * agent can re-orient in the same response. Healthy screens pay nothing. Returns null when the
+   * plugin is off or no drift is detected.
    */
   async driftCheck(
     tabId: number | undefined,
     snapshot: PageSnapshot,
-  ): Promise<{ drift: DriftReport; ariaFallback?: string } | null> {
+  ): Promise<{ drift: DriftReport; ariaFallback?: string } | { recovered: PageSnapshot } | null> {
     if (!this.plugins.drift) return null
     const entry = this.entry(tabId)
     // Drift is a regression from the most this group has ever resolved on THIS url. Read the
@@ -393,11 +444,57 @@ export class BrowserSession {
     const drift = detectManifestDrift(snapshot, urlBaseline)
     updateDriftBaseline(snapshot, entry.driftBaseline, keyFor)
     if (!drift.drifted) return null
+
+    // §12.2: attempt store recovery before falling back to a11y. Only keep the swap if it actually
+    // resolves MORE than the drifted snapshot did (propose → verify → adopt, never blind-swap).
+    const recovered = await this.tryStoreRecover(entry, snapshot).catch(() => null)
+    if (recovered) return { recovered }
+
     const ariaFallback = await entry.page
       .locator('body')
       .ariaSnapshot()
       .catch(() => undefined)
     return ariaFallback ? { drift, ariaFallback } : { drift }
+  }
+
+  /**
+   * §12.2 fetch-latest recovery. On confirmed drift, pull the latest SIGNED manifest for this
+   * origin, swap it in, and re-snapshot. The swap is adopted only if it resolves strictly more
+   * direct targets than the drifted snapshot — an unsigned/missing/unhelpful manifest leaves the
+   * page-injected one in place so the a11y escape hatch and ticket escalation still fire. Returns
+   * the recovered snapshot on success, else null.
+   */
+  private async tryStoreRecover(entry: TabEntry, drifted: PageSnapshot): Promise<PageSnapshot | null> {
+    const store = this.manifestStore
+    if (!store.enabled || !store.storeBase || !store.pinnedKey) return null
+    const origin = originOf(entry.page.url())
+    if (!origin) return null
+
+    const addr = { origin, schemaVersion: drifted.schemaVersion ?? 3 }
+    const result = await fetchLatestManifest({
+      storeBase: store.storeBase,
+      pinnedKey: store.pinnedKey,
+      addr,
+      ...(entry.manifestEtag.get(origin) ? { knownEtag: entry.manifestEtag.get(origin)! } : {}),
+      ...(this.storeTransport ? { transport: this.storeTransport } : {}),
+    })
+    if (!result.ok) return null
+
+    const prevOverride = entry.manifestOverride.get(origin)
+    entry.manifestOverride.set(origin, result.value.manifest)
+    if (result.etag) entry.manifestEtag.set(origin, result.etag)
+
+    const fresh = await this.snapshot(entry.id)
+    if (resolvedCount(fresh) > resolvedCount(drifted)) {
+      // Adopt: fold the healthier counts into the baseline so the recovered screen reads healthy.
+      const keyFor = (groupId: string): string => `${entry.page.url()}\t${groupId}`
+      updateDriftBaseline(fresh, entry.driftBaseline, keyFor)
+      return fresh
+    }
+    // The store manifest didn't help — roll back so we don't mask drift with a no-better override.
+    if (prevOverride) entry.manifestOverride.set(origin, prevOverride)
+    else entry.manifestOverride.delete(origin)
+    return null
   }
 
   // ---- resolve helper ------------------------------------------------------
@@ -413,13 +510,15 @@ export class BrowserSession {
     if (this.plugins.unmapped) {
       opts.resolveUnmapped = (ref) => this.unmappedRegistry.get(tabId)?.get(ref)?.selector
     }
+    const override = this.activeOverride(this.entry(tabId))
+    if (override) opts.manifestOverride = override
     return opts
   }
 
   // ---- feedback plugin (§8.2) ----------------------------------------------
 
   private async feedbackBaseline(entry: TabEntry): Promise<{ snapshot: PageSnapshot; ax: string[] }> {
-    const snapshot = await refreshSnapshot(entry.page, entry.store).catch(() => null)
+    const snapshot = await refreshSnapshot(entry.page, entry.store, this.activeOverride(entry)).catch(() => null)
     const ax = await entry.page
       .locator('body')
       .ariaSnapshot()
@@ -437,7 +536,7 @@ export class BrowserSession {
     if (this.plugins.settleAfterActionMs > 0) {
       await entry.page.waitForTimeout(this.plugins.settleAfterActionMs).catch(() => undefined)
     }
-    const after = await refreshSnapshot(entry.page, entry.store).catch(() => null)
+    const after = await refreshSnapshot(entry.page, entry.store, this.activeOverride(entry)).catch(() => null)
     const changed = actionChanged(before.snapshot, after)
     let actedId: string | undefined
     try {
@@ -485,7 +584,7 @@ export class BrowserSession {
     if (ids.length === 0) return
     let snapshot: PageSnapshot
     try {
-      snapshot = await refreshSnapshot(entry.page, createSnapshotStore())
+      snapshot = await refreshSnapshot(entry.page, createSnapshotStore(), this.activeOverride(entry))
     } catch {
       return
     }

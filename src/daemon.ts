@@ -119,7 +119,12 @@ async function routeRequest(ctx: RouteCtx): Promise<Record<string, unknown>> {
       const snapshot = await session.snapshot(tabId)
       // §8.6: drift detection rides on the snapshot just built (zero extra DOM work); the
       // full-a11y escape hatch is attached only when drift is confirmed.
+      // §12.2: on drift, the session may RECOVER by swapping in a fresh signed manifest from the
+      // store — then it returns the recovered snapshot and we surface manifestSource:'store'.
       const drift = await session.driftCheck(tabId, snapshot)
+      if (drift && 'recovered' in drift) {
+        return { ok: true, snapshot: drift.recovered, manifestSource: 'store' }
+      }
       return { ok: true, snapshot, ...(drift ?? {}) }
     }
 

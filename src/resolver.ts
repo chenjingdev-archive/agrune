@@ -249,6 +249,8 @@ export interface ResolveOptions {
   resolveUnmapped?: (ref: string) => string | undefined
   /** Plugin: self-heal hook (§8.1). */
   selfHeal?: SelfHealHook
+  /** §12.2: a store-fetched manifest that overrides the page-injected one (drift recovery). */
+  manifestOverride?: AgruneManifest
 }
 
 /**
@@ -263,7 +265,7 @@ export async function resolveTargetLocator(
   const unmapped = opts.resolveUnmapped?.(targetRef)
   if (unmapped) return page.locator(unmapped).first()
 
-  const manifest = await loadManifestFromPage(page)
+  const manifest = opts.manifestOverride ?? (await loadManifestFromPage(page))
   const normalized = normalizeAgentTargetId(targetRef)
   const found = await findTargetLocator(page, manifest, normalized)
   if (found) return found

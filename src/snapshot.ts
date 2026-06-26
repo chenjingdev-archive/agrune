@@ -442,15 +442,20 @@ function quote(value: string): string {
 export async function refreshSnapshot(
   page: Page,
   store: SnapshotStore,
+  manifestOverride?: AgruneManifest,
 ): Promise<PageSnapshot> {
   let manifest: AgruneManifest
-  try {
-    manifest = await loadManifestFromPage(page)
-  } catch (error) {
-    if (error instanceof CliError && error.code === 'MANIFEST_NOT_FOUND') {
-      manifest = { version: 3, groups: [] }
-    } else {
-      throw error
+  if (manifestOverride) {
+    manifest = manifestOverride
+  } else {
+    try {
+      manifest = await loadManifestFromPage(page)
+    } catch (error) {
+      if (error instanceof CliError && error.code === 'MANIFEST_NOT_FOUND') {
+        manifest = { version: 3, groups: [] }
+      } else {
+        throw error
+      }
     }
   }
   return buildSnapshotFromManifest(page, manifest, store)

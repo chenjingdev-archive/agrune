@@ -1294,18 +1294,19 @@ LOC budget per module: see §2.5.
 | Severity | Recovery | Status |
 |---|---|---|
 | Target-level drift (one ref) | §8.1 self-heal — deterministic, in-process, instant | **BUILT** |
-| Screen-level drift | §12.2 fetch the latest manifest from the store — automated, seconds | ROADMAP |
+| Screen-level drift | §12.2 fetch the latest manifest from the store — automated, seconds | **BUILT** (B1) |
 | Store miss (no fresh manifest) | §8.7 a11y escape-hatch keeps the agent working NOW, degraded | **BUILT** |
 | Durable fix needed | §12.3 ticket → §12.4 autonomous repair → verify → publish | ROADMAP |
 
 **Invariant: the system NEVER hard-stops.** It degrades to a11y-level operation (the agent keeps going) while the durable fix is in flight.
 
-### 12.2 Manifest store + fetch-latest (Tier 1)
+### 12.2 Manifest store + fetch-latest (Tier 1) — **BUILT (B1)**
 
-- **Manifest source becomes PLUGGABLE:** `page-injected` (`window.__agrune_manifest__`, current) | `store-fetched` | `local-file`. Default keeps page-injected primary; the store acts as an **override-on-drift**. Precedence/merge rules TBD.
-- **Addressing:** keyed by `(origin, appVersionOrContentHash, schemaVersion)`. Cheap version probe via ETag/content-hash; full fetch only on drift or version mismatch.
+- **Manifest source is PLUGGABLE:** `page-injected` (`window.__agrune_manifest__`, the default primary) is overridden, per origin, by a `store-fetched` manifest. The override is consulted by every manifest-load path — `resolveTargetLocator` (action resolve), `refreshSnapshot` (perception), and the unmapped plugin — via `ResolveOptions.manifestOverride` / `refreshSnapshot(…, override)`. (`local-file` source: future.)
+- **Addressing:** `<storeBase>/<encodeURIComponent(origin)>/<schemaVersion>[/<appVersion>]/manifest.json`. Conditional re-fetch via `If-None-Match` (304 → cache current). appVersion-based addressing is wired into the URL builder; the live recovery path keys by `(origin, schemaVersion)` for now.
+- **Recovery loop (`BrowserSession.tryStoreRecover`, gated on `driftCheck` confirming drift):** fetch-latest → verify → **swap the per-origin override + re-snapshot** → adopt the swap ONLY if it resolves strictly MORE direct targets than the drifted snapshot (propose → verify → adopt; an unhelpful or untrusted manifest is rolled back, leaving drift surfaced for the a11y escape hatch + §12.3 ticket). `GET /targets` returns the recovered snapshot with `manifestSource:'store'`.
 - The store is the **publish target** for §12.4 repairs — everything downstream depends on it, so it is built FIRST.
-- **SECURITY (load-bearing):** `keyFrom` is compiled via `new Function` (§3.11.4) — a remote manifest is a **code-injection surface**. Store artifacts MUST be **signed + pinned**; unsigned/unpinned manifests are rejected, never executed.
+- **SECURITY (load-bearing, `manifest-store.ts`):** `keyFrom` is compiled via `new Function` (§3.11.4) — a remote manifest is a **code-injection surface**. A store artifact is a signed envelope `{ payloadJson, alg:'ed25519', signature }`; the ed25519 signature covers the exact UTF-8 bytes of `payloadJson`, which decodes to `{ manifest, meta?, keyId? }` — so **everything trusted is under the signature** (provenance/keyId cannot be forged by a MITM). Verified only against the **pinned** public key (`AGRUNE_MANIFEST_STORE_KEY`, ed25519 only; non-ed25519 → fail closed). Unsigned / wrong-key / tampered / unpinned / schema-invalid / oversize artifacts are rejected and never swapped in. Transport is signature-trusted (http allowed for local/testing; a MITM over http can only deny/replay, never forge) with a body-size cap + absolute deadline. Activated only when both `AGRUNE_MANIFEST_STORE` (base URL) and `AGRUNE_MANIFEST_STORE_KEY` are set.
 
 ### 12.3 Ticket emission (Tier 3 escalation)
 

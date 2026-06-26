@@ -19,6 +19,7 @@ import { createPublicKey, verify as cryptoVerify, createHash, type KeyObject } f
 import { readFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
+import http from 'node:http'
 import https from 'node:https'
 import { validateManifest, type AgruneManifest } from './manifest.js'
 
@@ -223,12 +224,16 @@ export interface TransportResponse {
 export type Transport = (url: string, headers: Record<string, string>) => Promise<TransportResponse>
 
 /**
- * Default HTTPS transport with three independent safety bounds so a malicious/compromised store
- * cannot stall or OOM the run: a hard body-size cap, an absolute deadline (defeats slow-drip), and
- * a secondary idle timeout. Any of them aborts the request → the promise rejects → the caller turns
+ * Default transport with three independent safety bounds so a malicious/compromised store cannot
+ * stall or OOM the run: a hard body-size cap, an absolute deadline (defeats slow-drip), and a
+ * secondary idle timeout. Any of them aborts the request → the promise rejects → the caller turns
  * it into a structured `network` non-ok result and leaves the existing manifest in place.
+ *
+ * Scheme-dispatched (http for localhost/testing, https otherwise). Plain http is acceptable here
+ * because the TRUST anchor is the ed25519 signature, not TLS: over http a MITM can only deny or
+ * replay (both fail-closed to "keep the existing manifest"), never forge a manifest we'd execute.
  */
-const httpsTransport: Transport = (url, headers) =>
+const nodeTransport: Transport = (url, headers) =>
   new Promise((resolve, reject) => {
     let settled = false
     let deadline: NodeJS.Timeout
@@ -239,7 +244,8 @@ const httpsTransport: Transport = (url, headers) =>
       fn()
     }
 
-    const req = https.get(url, { headers }, (res) => {
+    const get = url.startsWith('http://') ? http.get : https.get
+    const req = get(url, { headers }, (res) => {
       const chunks: Buffer[] = []
       let total = 0
       res.on('data', (c: Buffer) => {
@@ -301,7 +307,7 @@ export type FetchResult =
  * (page-injected) manifest in place and surfaces drift instead of swapping in something unproven.
  */
 export async function fetchLatestManifest(opts: FetchOptions): Promise<FetchResult> {
-  const transport = opts.transport ?? httpsTransport
+  const transport = opts.transport ?? nodeTransport
   const url = manifestUrl(opts.storeBase, opts.addr)
   const headers: Record<string, string> = { accept: 'application/json' }
   if (opts.knownEtag) headers['if-none-match'] = opts.knownEtag
