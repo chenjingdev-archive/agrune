@@ -1315,23 +1315,26 @@ LOC budget per module: see §2.5.
 - **Sink is PLUGGABLE** via `AGRUNE_TICKET_SINK`: `file:/path.jsonl` (default/dev) | `http(s)://…` webhook (→ GitHub/Linear/Slack via a relay; native adapters slot into `makeSink` later). Unknown spec → disabled.
 - **Dedup** by `fingerprintFor(origin, groupId, sorted(missingTargetIds))` → repeated drift = one OPEN ticket, not one-per-load. **Debounce:** emit only after the breakage is observed `AGRUNE_TICKET_MIN_OBS` times (default 2) across `AGRUNE_TICKET_MIN_WINDOW_MS` (default 1500ms) — the §8.7 per-call signal is right for the inline a11y fallback but too twitchy for escalation. A sink failure is retried on a later observation after a 60s cooldown (no hammering a broken sink).
 
-### 12.4 Autonomous repair harness (the agent)
+### 12.4 Autonomous repair harness (the agent) — **GATE BUILT (B3a, `repair.ts` + `manifest-store.ts` publish side); LOOP BUILT (B3b, `runRepair`)**
 
-- **Job:** an agent drives the live app and **PATCHES the drifted targets only** — healthy targets are FROZEN (patch, never rewrite; diff-based; MUST NOT regress working refs).
-- **It is not authoring blind.** Three assets, all already produced by the runtime:
-  - **INPUT** = the live a11y auto-served on drift (§8.7).
+- **Job:** an agent drives the live app and **PATCHES the drifted targets only** — healthy targets are FROZEN. `mergeManifestPatch` replaces ONLY the selector of named `(groupId, targetId)` targets and keeps every other target's object reference, so unpatched targets are byte-identical (a repair can never regress a working ref).
+- **It is not authoring blind.** Three assets, all already produced by the runtime, are fed to the proposer:
+  - **INPUT** = the live a11y auto-served on drift (§8.7), carried on the §12.3 ticket.
   - **SPEC** = the OLD manifest target (`name`/`desc`/`role`) — *"find what now does what 'Filter' used to do."* This is §8.1 self-heal's intent-matching **escalated from target-scope to screen-scope** by an LLM. Same operation, different scale.
-  - **ORACLE** = the target's `onSuccess` — resolve the repaired selector, optionally act, confirm the declared effect.
-- **VERIFICATION GATE (first-class invariant): `propose → verify → publish`, NEVER `guess → publish`.** A wrong manifest in the store is **worse than no manifest** (no manifest → safe a11y fallback; wrong manifest → confident wrong actions at scale). A target is published only if it (a) passes schema + forbidden-selector + keyFrom gates (§3.11) AND (b) resolves + satisfies its effect oracle.
-- **Provenance + rollback:** every store version records author (`human`|`agent`), timestamp, target app version; one-click rollback. Treat as infra config.
+  - **ORACLE** = the target's `onSuccess` — resolve the repaired selector, optionally act, confirm the declared effect (the optional `RepairOracle` in `verifyRepair`).
+- **VERIFICATION GATE (first-class invariant, MECHANICAL): `propose → verify → publish`, NEVER `guess → publish`.** `verifyRepair` judges each proposed patch on the LIVE page: a patch is eligible only if (a) the merge passes schema + forbidden-selector + keyFrom gates (`validateManifest`, §3.11) AND (b) the patched target RESOLVES on the live DOM (+ optional effect oracle). Ineligible patches are dropped, never published. A wrong manifest in the store is **worse than no manifest** (no manifest → safe a11y fallback; wrong manifest → confident wrong actions at scale).
+- **Publish symmetry:** `signManifest` is the exact inverse of the runtime's verify gate (`verifyEnvelope(signManifest(m, …), pub) === m`), so the harness can ONLY publish artifacts that pass the same trust gate the runtime applies on fetch — there is no weaker publish path. `publishToDir` writes the signed envelope to a dir the store serves (URL layout mirrors `storePathFor`/`manifestUrl`).
+- **Loop (`runRepair`):** `propose → verifyRepair → publish` with the LLM proposer as an INJECTED seam (`ProposeSelector`), so the loop, the gate, and the publish decision are deterministic + tested while the operator wires their agent into `propose`. `publish` is invoked ONLY with verified-eligible patches — guess→publish is structurally impossible.
+- **Provenance + rollback:** the signed payload's `meta` records author (`human`|`agent`), origin, timestamp; the dir store keeps each published version addressable. (One-click rollback / version history UI: future.)
+- **Operator form factor:** an operator runs an agent (e.g. a Workflow) that, per open ticket, supplies a real `propose` (read the ticket's a11y + intent, return a selector ladder) and a `publish` (sign + publishToDir). The non-deterministic step is isolated behind `propose`; everything around it is the tested gate.
 
-### 12.5 Build order & dependencies
+### 12.5 Build order & dependencies — **ALL BUILT**
 
-1. **Store + fetch-latest (§12.2)** — backbone; everything publishes to / reads from it. Highest value, lowest risk.
-2. **Ticket emitter (§12.3)** — cheap given the `DriftReport`; pluggable sink.
-3. **Repair harness (§12.4)** — consumes 1 (publishes) and 2 (triggered by tickets); built LAST because it most needs the verification scaffolding to be safe.
+1. **Store + fetch-latest (§12.2)** — backbone; everything publishes to / reads from it. **BUILT (B1).**
+2. **Ticket emitter (§12.3)** — cheap given the `DriftReport`; pluggable sink. **BUILT (B2).**
+3. **Repair harness (§12.4)** — consumes 1 (publishes) and 2 (triggered by tickets); built LAST because it most needs the verification scaffolding to be safe. **GATE + LOOP BUILT (B3a/B3b);** the LLM proposer is an injected seam an operator wires.
 
-The §8.7 sensor is the prerequisite for all three and is **already built**.
+The §8.7 sensor is the prerequisite for all three and was already built. The full sense → fetch → escalate → repair → verify → publish loop is now closed in code, with the verification gate mechanical (a wrong proposal cannot be published).
 
 ---
 

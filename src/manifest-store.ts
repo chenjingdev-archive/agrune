@@ -15,10 +15,17 @@
 // label "verified" — the ONLY fields outside the signature are `alg` and `signature` themselves,
 // which are verification machinery, not trusted data.
 
-import { createPublicKey, verify as cryptoVerify, createHash, type KeyObject } from 'node:crypto'
+import {
+  createPublicKey,
+  createPrivateKey,
+  verify as cryptoVerify,
+  sign as cryptoSign,
+  createHash,
+  type KeyObject,
+} from 'node:crypto'
 import { readFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
-import { join } from 'node:path'
+import { join, dirname } from 'node:path'
 import http from 'node:http'
 import https from 'node:https'
 import { validateManifest, type AgruneManifest } from './manifest.js'
@@ -398,4 +405,66 @@ export class ManifestCache {
       /* a cache write failure must never break the run */
     }
   }
+}
+
+// ---- publish side (§12.4 repair harness) -----------------------------------
+//
+// The inverse of the verify path: SIGN a manifest into a publishable envelope, and PUBLISH it to a
+// directory the store serves. By construction `verifyEnvelope(signManifest(m, …), pub) === m`, so
+// the repair harness can only publish artifacts that will pass the exact same trust gate the
+// runtime applies on fetch — there is no separate, weaker publish path.
+
+/** Parse a signing PRIVATE key (PEM or path). Ed25519 only → null otherwise (fail closed). */
+export function parseSigningKey(spec: string | undefined): KeyObject | null {
+  if (!spec || spec.trim().length === 0) return null
+  let material = spec.trim()
+  if (!material.includes('BEGIN') && material.length < 4096 && existsSync(material)) {
+    try {
+      material = readFileSync(material, 'utf8').trim()
+    } catch {
+      return null
+    }
+  }
+  try {
+    const key = createPrivateKey(material)
+    return key.asymmetricKeyType === 'ed25519' ? key : null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Sign a manifest into a publishable envelope. Everything trusted (manifest + provenance + keyId)
+ * goes UNDER the signature — symmetric with verifyEnvelope, which is the only consumer.
+ */
+export function signManifest(
+  manifest: AgruneManifest,
+  meta: ManifestProvenance | undefined,
+  privateKey: KeyObject,
+  keyId?: string,
+): ManifestEnvelope {
+  const payload: SignedPayload = {
+    manifest,
+    ...(meta ? { meta } : {}),
+    ...(keyId ? { keyId } : {}),
+  }
+  const payloadJson = JSON.stringify(payload)
+  const signature = cryptoSign(null, Buffer.from(payloadJson, 'utf8'), privateKey).toString('base64')
+  return { payloadJson, alg: 'ed25519', signature }
+}
+
+/** Filesystem path under a publish root mirroring `manifestUrl` — a static server over the root IS
+ *  the store. `<root>/<encodeURIComponent(origin)>/<schemaVersion>[/<appVersion>]/manifest.json`. */
+export function storePathFor(root: string, addr: ManifestAddress): string {
+  const parts = [root, encodeURIComponent(addr.origin), String(addr.schemaVersion ?? 3)]
+  if (addr.appVersion) parts.push(encodeURIComponent(addr.appVersion))
+  return join(...parts, 'manifest.json')
+}
+
+/** Publish a signed envelope to the dir store. Returns the written path. */
+export function publishToDir(root: string, addr: ManifestAddress, envelope: ManifestEnvelope): string {
+  const path = storePathFor(root, addr)
+  mkdirSync(dirname(path), { recursive: true })
+  writeFileSync(path, JSON.stringify(envelope, null, 2))
+  return path
 }
