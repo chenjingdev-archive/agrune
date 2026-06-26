@@ -32,6 +32,13 @@ export interface PluginConfig {
   manifestStore: boolean
   /** §8.2 settle: poll for async-effect quiescence after an action. 0 = off (default). */
   settleAfterActionMs: number
+  /** §8.8 manifest-only (strict capability) mode. The manifest becomes a hard boundary, not just
+   * a narrowed view: arbitrary-code + full-perception escape hatches (evaluate/run-code/raw
+   * snapshot/full read/generate-locator) are refused, target-scoped reads accept ONLY declared
+   * manifest refs (no raw selectors), and on drift the a11y fallback is suppressed so the agent
+   * cannot see outside the declared surface. Set by the OPERATOR via AGRUNE_MANIFEST_ONLY — the
+   * agent only sends commands to the daemon, so it cannot turn this off (that is the whole point). */
+  manifestOnly: boolean
 }
 
 export function loadPluginConfig(): PluginConfig {
@@ -45,5 +52,6 @@ export function loadPluginConfig(): PluginConfig {
     drift: onByDefault('AGRUNE_DRIFT'),
     manifestStore: Boolean(process.env.AGRUNE_MANIFEST_STORE?.trim()),
     settleAfterActionMs: Number.isFinite(settle) && settle > 0 ? settle : 0,
+    manifestOnly: on('AGRUNE_MANIFEST_ONLY'),
   }
 }

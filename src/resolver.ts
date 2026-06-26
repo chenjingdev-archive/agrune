@@ -251,6 +251,10 @@ export interface ResolveOptions {
   selfHeal?: SelfHealHook
   /** §12.2: a store-fetched manifest that overrides the page-injected one (drift recovery). */
   manifestOverride?: AgruneManifest
+  /** §8.8 manifest-only: refuse the raw-CSS fallback so a non-declared ref cannot escape the
+   * manifest boundary. Only resolveTargetOrSelectorLocator honors this (the strict
+   * resolveTargetLocator already accepts declared refs only). */
+  manifestOnly?: boolean
 }
 
 /**
@@ -307,6 +311,12 @@ export async function resolveTargetOrSelectorLocator(
     return await resolveTargetLocator(page, targetRef, opts)
   } catch (error) {
     if (error instanceof CliError && error.details?.manifestTarget === true) throw error
+    // §8.8 manifest-only: a non-declared ref must NOT fall through to a raw selector — that is the
+    // exact escape the strict boundary exists to close. Rethrow the not-declared error as-is.
+    if (opts.manifestOnly) {
+      if (error instanceof CliError) throw error
+      throw new CliError('TARGET_NOT_FOUND', `Target not found: ${targetRef}`, { target: targetRef })
+    }
     // Treat as a raw CSS selector.
     const locator = page.locator(targetRef)
     const count = await locator.count().catch(() => 0)

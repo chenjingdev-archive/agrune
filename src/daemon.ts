@@ -11,6 +11,7 @@ import { mkdirSync } from 'node:fs'
 import { dirname } from 'node:path'
 import { BrowserSession } from './browser-session.js'
 import { CliError, errorResponse } from './errors.js'
+import { enforceManifestOnly } from './manifest-only.js'
 import {
   ensureRunDir,
   removeSocketFile,
@@ -95,6 +96,12 @@ interface RouteCtx {
 async function routeRequest(ctx: RouteCtx): Promise<Record<string, unknown>> {
   const { method, pathname, query, body, session } = ctx
   const route = `${method} ${pathname}`
+
+  // §8.8 manifest-only: refuse escape-hatch verbs before they reach the session. The operator sets
+  // this; the agent cannot. /health is exempt so liveness probes still work in strict mode.
+  if (session.manifestOnly && route !== 'GET /health') {
+    enforceManifestOnly(route, body, query)
+  }
 
   switch (route) {
     case 'GET /health': {

@@ -148,6 +148,21 @@ But treat it as a hint, not a verdict — judge it against what you're actually 
 
 In short: let a *failing action*, not a banner, decide whether to fall back.
 
+## Manifest-only mode — when escape hatches are disabled
+
+An operator can run the daemon in **manifest-only** mode (a strict capability boundary for
+security-sensitive automation). When they do, a command may come back with
+`{ "code": "MANIFEST_ONLY", ... }` — the escape hatches are intentionally off: `evaluate`,
+`run-code`, raw `snapshot` (whole-page a11y), full-page `read`, `generate-locator`, raw mouse/key
+events, `cookies`/`storage`/`state-save`, `network`, and `pdf` are all refused, and a target-scoped
+`snapshot`/`screenshot` accepts only a **declared manifest ref** (never a raw CSS selector).
+
+This is not a bug and not something you can or should try to work around — it means the app has
+declared exactly what automation is allowed to touch. Stay on the declared surface: read `targets`,
+act on refs, confirm with a target-scoped `snapshot --target <ref>`. If you genuinely cannot do the
+task within the declared targets, say so — that's a signal the manifest needs a new target, which is
+the operator's call.
+
 ## Notes
 
 - `sensitive` targets (passwords, etc.) are masked: you never see their value, and that is

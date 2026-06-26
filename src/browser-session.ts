@@ -183,6 +183,12 @@ export class BrowserSession {
     this.ticketEmitter = ticketCfg.enabled && sink ? new TicketEmitter(ticketCfg, sink) : undefined
   }
 
+  /** §8.8: whether the operator put this daemon in manifest-only (strict capability) mode. The
+   *  daemon route gate reads this to refuse escape-hatch verbs before they reach the session. */
+  get manifestOnly(): boolean {
+    return this.plugins.manifestOnly
+  }
+
   async start(): Promise<void> {
     if (this.attached) {
       // attach (§6.5 / A.0.3, off-default per DECISIONS #26): drive the user's real Chrome over
@@ -423,7 +429,11 @@ export class BrowserSession {
     opts: AriaSnapshotOptions,
   ): Promise<{ text: string; mode: 'ai' | 'default'; target?: string; depth?: number }> {
     const entry = this.entry(tabId)
-    return ariaSnapshotImpl(entry.page, (ref) => resolveTargetOrSelectorLocator(entry.page, ref), opts)
+    return ariaSnapshotImpl(
+      entry.page,
+      (ref) => resolveTargetOrSelectorLocator(entry.page, ref, { manifestOnly: this.plugins.manifestOnly }),
+      opts,
+    )
   }
 
   /**
@@ -458,10 +468,12 @@ export class BrowserSession {
     const recovered = await this.tryStoreRecover(entry, snapshot).catch(() => null)
     if (recovered) return { recovered }
 
-    const ariaFallback = await entry.page
-      .locator('body')
-      .ariaSnapshot()
-      .catch(() => undefined)
+    // §8.8 manifest-only: suppress the a11y escape hatch — on unrecovered drift the agent must NOT
+    // be handed a view outside the declared surface. Store recovery (above) still runs; the ticket
+    // still fires so the manifest gets repaired. Strict trades graceful degradation for containment.
+    const ariaFallback = this.plugins.manifestOnly
+      ? undefined
+      : await entry.page.locator('body').ariaSnapshot().catch(() => undefined)
     // §12.3: store recovery missed → escalate a durable, deduped+debounced ticket so the manifest
     // gets repaired (§12.4). Best-effort; it must never block or break the read.
     await this.maybeEmitTickets(entry, drift, ariaFallback).catch(() => undefined)
@@ -538,7 +550,10 @@ export class BrowserSession {
   private resolveOpts(tabId: number): ResolveOptions {
     const opts: ResolveOptions = {}
     if (this.selfHealHook) opts.selfHeal = this.selfHealHook
-    if (this.plugins.unmapped) {
+    // §8.8 defense-in-depth: the unmapped plugin resolves x1/x2 refs for UNDECLARED controls — a
+    // manifest-boundary escape. If an operator turns both on, manifest-only wins (it is the stricter
+    // intent), so the unmapped escape stays closed.
+    if (this.plugins.unmapped && !this.plugins.manifestOnly) {
       opts.resolveUnmapped = (ref) => this.unmappedRegistry.get(tabId)?.get(ref)?.selector
     }
     const override = this.activeOverride(this.entry(tabId))
@@ -839,7 +854,9 @@ export class BrowserSession {
     const absolutePath = resolvePath(path)
     await mkdir(dirname(absolutePath), { recursive: true })
     if (options.targetRef) {
-      const locator = await resolveTargetOrSelectorLocator(entry.page, options.targetRef)
+      const locator = await resolveTargetOrSelectorLocator(entry.page, options.targetRef, {
+        manifestOnly: this.plugins.manifestOnly,
+      })
       await locator.screenshot({ path: absolutePath, type: options.type })
       return absolutePath
     }
@@ -850,7 +867,9 @@ export class BrowserSession {
   async evaluate(tabId: number | undefined, source: string, arg: unknown, targetRef?: string): Promise<unknown> {
     const entry = this.entry(tabId)
     if (targetRef) {
-      const locator = await resolveTargetOrSelectorLocator(entry.page, targetRef)
+      const locator = await resolveTargetOrSelectorLocator(entry.page, targetRef, {
+        manifestOnly: this.plugins.manifestOnly,
+      })
       return locator.evaluate(evaluateTargetInBrowser, { source, arg })
     }
     return entry.page.evaluate(evaluatePageInBrowser, { source, arg })
@@ -955,7 +974,9 @@ export class BrowserSession {
   /** generate-locator: emit BOTH a Playwright locator string and the manifest target-ref. */
   async generateLocator(tabId: number | undefined, targetRef: string): Promise<{ target: string; playwright: string }> {
     const entry = this.entry(tabId)
-    const locator = await resolveTargetOrSelectorLocator(entry.page, targetRef)
+    const locator = await resolveTargetOrSelectorLocator(entry.page, targetRef, {
+      manifestOnly: this.plugins.manifestOnly,
+    })
     // Public, stable description of the resolved locator.
     const playwright = await locator
       .evaluate((el) => {

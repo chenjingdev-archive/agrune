@@ -1175,6 +1175,23 @@ The resilience net for "the app changed and the manifest is now stale on this sc
 
 **Surface (algorithm detects, agent decides).** On confirmed drift, `GET /targets` attaches `drift: DriftReport` AND, captured once at that moment, the full-page `ariaFallback` (the §4.4 escape hatch). The CLI appends a `⚠ MANIFEST DRIFT` notice + the a11y to the `targets` text so the agent re-orients in the SAME response — no extra round-trip, no thrashing on dead targets. **Healthy screens pay nothing** (no `drift` field, no a11y capture); only the rare stale screen pays the full-a11y cost — strictly ≤ pwcli, which pays it every look. The core never rewrites the manifest.
 
+### 8.8 Manifest-Only Mode — Strict Capability Boundary (opt-in; `AGRUNE_MANIFEST_ONLY=1`) — BUILT
+
+The manifest's **second value axis**, beside "stable refs": it is a *capability contract* the app declares for the agent. Default mode narrows the agent's VIEW to declared targets but leaves escape hatches open (`evaluate`, raw `snapshot`, `read`, …). Manifest-only mode makes the boundary **enforced, not advisory** — for security-sensitive automation (finance/medical/internal admin) where "the AI may automate this app, but only what the app declared" must be a guarantee, not a convention. It is the perception-and-action analog of §8.4 sensitive masking (always-on) extended to the whole surface.
+
+**Who sets it, and why it can't be bypassed.** The OPERATOR sets `AGRUNE_MANIFEST_ONLY` when launching the daemon; the agent only sends *commands* to the daemon, never touches its env, so it cannot turn the mode off — that is the entire point. A page that prompt-injects the agent is likewise contained.
+
+**Single choke point.** Enforcement is one gate (`enforceManifestOnly`, `src/manifest-only.ts`) called in `daemon.ts`'s `routeRequest` right after every command is reduced to a `"METHOD /path"` string — so one gate covers the whole command surface. `GET /health` is exempt (liveness).
+
+**What is closed** (the deny/scope set was hardened by an adversarial audit — 4 threat lenses × refute-verify — which caught two whole families the first draft missed):
+- **DENY — arbitrary code / out-of-band control:** `evaluate`, `run-code`, `run-code-unsafe`, `pause`, `generate-locator` (mints raw selectors).
+- **DENY — raw input (no manifest ref):** `mousemove`/`mousedown`/`mouseup`/`mousewheel`, `keydown`/`keyup`. These actuate by coordinate / current focus and call NO resolver, so `mousemove{x,y}+mousedown+mouseup` clicks any pixel (e.g. an undeclared "Delete account"). They cannot be ref-scoped → refused.
+- **DENY — credential / full export:** `cookies`(+`cookies/get`), `state-save`, `storage`, `network`(+`network/request`), `read` (full innerText), `pdf` (renders the entire surface to a file).
+- **SCOPE — whole-surface variant denied, target-scoped allowed:** `snapshot` needs a target (raw whole-page a11y denied), `screenshot` may not be `fullPage`, `press` needs a target (a target-less press is a page-global key chord).
+- **ALLOW unchanged:** the declared action surface — `click`/`fill`/`select`/`check`/`type`/`scroll`/`wait`/`targets`/navigation. These already resolve declared refs ONLY (`resolveTargetLocator`), so a raw selector can't sneak through. The target-scoped reads (`snapshot`/`screenshot --target`) carry `ResolveOptions.manifestOnly`, which refuses the raw-CSS fallback in `resolveTargetOrSelectorLocator`.
+
+**Drift behavior.** On unrecovered drift the a11y escape hatch is **suppressed** (the agent must not see outside the declared surface). Store recovery (§12.2) still runs and the repair ticket (§12.3) still fires — strict trades graceful a11y degradation for containment, leaning on the signed store as the only sanctioned way to re-expand the surface. Defense-in-depth: the §8.3 `unmapped` plugin (which would resolve `x1`/`x2` for *undeclared* controls) is forced off when manifest-only is on.
+
 ---
 
 ## 9. Distribution
