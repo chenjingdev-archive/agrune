@@ -240,6 +240,14 @@ export async function runCommand(parsed: ParsedArgs, io: ProgramIO): Promise<num
       print(await clientFromFlags(flags).request('POST', '/highlight', { target, ...tabBody(flags) }))
       return 0
     }
+    case 'scroll': {
+      const target = requireRef(positionals, 'scroll')
+      const body: Record<string, unknown> = { target, ...tabBody(flags) }
+      const to = getStringFlag(flags, 'to')
+      if (to !== undefined) body.to = to
+      print(await clientFromFlags(flags).request('POST', '/scroll', body))
+      return 0
+    }
     case 'generate-locator': {
       const target = positionals[0] ?? getStringFlag(flags, 'target')
       if (!target) throw new CliError('INVALID_COMMAND', 'generate-locator requires a <target-ref>')

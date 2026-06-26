@@ -21,8 +21,23 @@ export function workspaceHash(cwd: string = process.cwd()): string {
   return createHash('sha256').update(workspacePath(cwd)).digest('hex').slice(0, 12)
 }
 
+/**
+ * The daemon instance key (run-dir name). A custom `AGRUNE_DAEMON_SOCKET` identifies a *distinct*
+ * local daemon, so it gets its own run dir — otherwise its session file + spawn lock would collide
+ * with the default per-workspace daemon (or another custom socket) sharing the same cwd, and a
+ * fresh command could kill the wrong daemon during stale-state cleanup. Without an override the
+ * instance simply IS the workspace, so the default socket path is unchanged.
+ */
+function instanceKey(cwd: string = process.cwd()): string {
+  const envSock = process.env.AGRUNE_DAEMON_SOCKET
+  if (envSock && envSock.trim().length > 0) {
+    return createHash('sha256').update(`sock:${envSock.trim()}`).digest('hex').slice(0, 12)
+  }
+  return workspaceHash(cwd)
+}
+
 export function workspaceRunDir(cwd: string = process.cwd()): string {
-  return join(homedir(), '.agrune', 'run', workspaceHash(cwd))
+  return join(homedir(), '.agrune', 'run', instanceKey(cwd))
 }
 
 /** POSIX → `<runDir>/daemon.sock`; win32 → named pipe `\\.\pipe\agrune-<hash12>`. */
@@ -44,8 +59,11 @@ export interface DaemonEndpoint {
 
 /**
  * Endpoint token (A.1.2). Override precedence:
- *   --host/--port (→ http://…, explicit) > AGRUNE_DAEMON_SOCKET (→ unix:…, explicit) >
- *   default workspace socket (unix:…, non-explicit → auto-spawns).
+ *   --host/--port (→ http://…, explicit → a daemon someone else manages, never auto-spawned) >
+ *   AGRUNE_DAEMON_SOCKET (→ unix:…, a LOCAL per-workspace override → auto-spawns, like the default) >
+ *   default workspace socket (unix:…, auto-spawns).
+ * A custom socket is a local path we can bind ourselves, so it is non-explicit: the first command
+ * auto-spawns a daemon on it (the child inherits the env var and binds the same socket).
  */
 export function getDaemonEndpoint(
   flags: Record<string, string | boolean>,
@@ -63,7 +81,7 @@ export function getDaemonEndpoint(
   }
   const envSock = process.env.AGRUNE_DAEMON_SOCKET
   if (envSock && envSock.trim().length > 0) {
-    return { endpoint: `unix:${envSock.trim()}`, explicit: true }
+    return { endpoint: `unix:${envSock.trim()}`, explicit: false }
   }
   return { endpoint: `unix:${defaultSocketPath(cwd)}`, explicit: false }
 }

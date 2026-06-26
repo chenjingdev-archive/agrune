@@ -50,6 +50,7 @@ const HELP_LINES: string[] = [
   '  agrune wait <target-ref> [--state visible|hidden|enabled|disabled]',
   '  agrune wait --text <text> | --text-gone <text> | --time <seconds>',
   '  agrune screenshot [--output path] [--full-page] [--target <target-ref>] [--type png|jpeg]',
+  '  agrune scroll <target-ref> [--to start|center|end|nearest]   # bring an offscreen target into view',
   '  agrune read',
   '',
 ]

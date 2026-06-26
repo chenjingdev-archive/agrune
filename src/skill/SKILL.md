@@ -69,9 +69,10 @@ that isn't on screen yet.
 The fix is almost always to change the UI state, not the ref: open the panel, advance the step,
 or bring the element into view, then re-read `targets`. The `reason` clears once the element
 becomes actionable. For `offscreen` specifically: agrune auto-scrolls to a target before acting,
-but a control low in a tall dialog can sit below a short viewport (common under `--headless`) and
-stay unreachable — enlarge the viewport with `agrune resize <width> <height>` (or scroll its
-container with `agrune evaluate`), then re-read.
+but a control low in a tall, internally-scrolling dialog can still sit below a short viewport
+(common under `--headless`). Use `agrune scroll <ref>` to bring it into view (add `--to center`
+to force the alignment), then re-read. If even that leaves it clipped, the viewport itself is too
+small — enlarge it with `agrune resize <width> <height>`.
 
 ## Working a multi-step flow (wizards, dialogs, multi-step forms)
 

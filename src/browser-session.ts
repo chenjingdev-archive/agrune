@@ -798,6 +798,30 @@ export class BrowserSession {
     await (await this.resolve(entry, targetRef)).highlight()
   }
 
+  /**
+   * Bring a target into view (§6.5). `click`/`hover` auto-scroll, but a control low in a tall,
+   * internally-scrolling container can still report `offscreen` and fail Playwright's
+   * "outside of the viewport" guard — this is the explicit positioning verb for that case.
+   * Default uses `scrollIntoViewIfNeeded()` (scrolls only when not already visible); `--to`
+   * forces a specific alignment via the DOM `scrollIntoView({ block })`.
+   */
+  async scroll(
+    tabId: number | undefined,
+    targetRef: string,
+    to?: 'start' | 'center' | 'end' | 'nearest',
+  ): Promise<void> {
+    const entry = this.entry(tabId)
+    const locator = await this.resolve(entry, targetRef)
+    if (to === undefined) {
+      await locator.scrollIntoViewIfNeeded()
+    } else {
+      await locator.evaluate(
+        (el, block) => el.scrollIntoView({ block: block as ScrollLogicalPosition, inline: 'nearest' }),
+        to,
+      )
+    }
+  }
+
   /** generate-locator: emit BOTH a Playwright locator string and the manifest target-ref. */
   async generateLocator(tabId: number | undefined, targetRef: string): Promise<{ target: string; playwright: string }> {
     const entry = this.entry(tabId)

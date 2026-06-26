@@ -7,6 +7,8 @@
 
 import http from 'node:http'
 import net from 'node:net'
+import { mkdirSync } from 'node:fs'
+import { dirname } from 'node:path'
 import { BrowserSession } from './browser-session.js'
 import { CliError, errorResponse } from './errors.js'
 import {
@@ -400,6 +402,12 @@ async function routeRequest(ctx: RouteCtx): Promise<Record<string, unknown>> {
       await session.highlight(optionalNumber(body.tabId), target)
       return { ok: true, action: 'highlight', target }
     }
+    case 'POST /scroll': {
+      const target = requireString(body, 'target')
+      const to = parseScrollTo(body.to)
+      await session.scroll(optionalNumber(body.tabId), target, to)
+      return { ok: true, action: 'scroll', target, ...(to ? { to } : {}) }
+    }
     case 'GET /generate-locator': {
       const target = query.get('target')
       if (!target) throw new CliError('INVALID_COMMAND', 'generate-locator requires --target')
@@ -698,6 +706,12 @@ function parseButton(value: unknown): 'left' | 'right' | 'middle' | undefined {
   throw new CliError('INVALID_COMMAND', 'button must be one of: left, right, middle')
 }
 
+function parseScrollTo(value: unknown): 'start' | 'center' | 'end' | 'nearest' | undefined {
+  if (value === undefined || value === '') return undefined
+  if (value === 'start' || value === 'center' || value === 'end' || value === 'nearest') return value
+  throw new CliError('INVALID_COMMAND', 'scroll --to must be one of: start, center, end, nearest')
+}
+
 function requireStringArray(value: unknown, key: string): string[] {
   if (!Array.isArray(value) || value.length === 0 || !value.every((v) => typeof v === 'string' && v.length > 0)) {
     throw new CliError('INVALID_COMMAND', `${key} must be a non-empty array of non-empty strings`)
@@ -795,6 +809,9 @@ export async function startDaemon(opts: {
   if (isUnix) {
     const socketPath = opts.endpoint.slice('unix:'.length)
     ensureRunDir(opts.cwd)
+    // A custom AGRUNE_DAEMON_SOCKET can point outside the run dir; bind fails with ENOENT if its
+    // parent dir is missing, so create it before listening.
+    mkdirSync(dirname(socketPath), { recursive: true })
     if (socketFileExists(socketPath)) {
       if (await socketAccepting(socketPath)) {
         await session.stop()

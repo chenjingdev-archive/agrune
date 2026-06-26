@@ -740,6 +740,7 @@ Every action kind maps onto a documented Playwright v1.59 public locator/page me
 | keydown/keyup (parity) | new | `page.keyboard.down/up(key)` | §6 |
 | mousemove/down/up/wheel (parity) | new | `page.mouse.move/down/up/wheel` | §6 |
 | highlight (parity) | new | `locator.highlight()` | §6 |
+| `scroll` (agrune extra) | `session.scroll(...)` | `locator.scrollIntoViewIfNeeded()` (default) or `locator.evaluate(el=>el.scrollIntoView({block}))` for `--to` | bring an offscreen target into view (§6.5) |
 | pdf (parity) | new | `page.pdf({path})` | chromium headless only |
 
 **`fillForm` boolean coercion:** bool as-is; number `!==0`; strings `1/true/yes/on/checked`→true, `0/false/no/off/unchecked`→false, else throws. `fillForm` iterates fields in order; any error → `FIELD_FAILED "Failed to fill form field ${name??target}: ${msg}" {index,name,target,type}` (stops at first failure).
@@ -876,6 +877,7 @@ Every browser command also accepts `--tab <id>` (positive int → `tabId`), `--h
 | `drag` | | `<start-ref> [end-ref]` | `--to <end-ref>` | `/drag` `{startTarget,endTarget}` |
 | `wait` | | `[ref]` | `--state visible\|hidden\|enabled\|disabled`, `--text`, `--text-gone`/`--textGone`, `--time <s>`/`--time-ms`, `--timeout <ms>` | `/wait` (exactly one of target/text/textGone/timeMs; default timeout 10000ms) |
 | `screenshot` | | — | `--output <path>`, `--full-page`, `--target <ref>`, `--type png\|jpeg`, `--json` | `/screenshot` `{path,fullPage,target,type}` |
+| `scroll` | | `<ref>` | `--to start\|center\|end\|nearest` | `/scroll` `{target,to?}` (**agrune extra** — `locator.scrollIntoViewIfNeeded()`; bring an offscreen target into view) |
 
 Unknown command → write `Unknown command: ...\n` to stderr, return `1`.
 
@@ -1814,6 +1816,7 @@ Usage:
   agrune wait <target-ref> [--state visible|hidden|enabled|disabled]
   agrune wait --text <text> | --text-gone <text> | --time <seconds>
   agrune screenshot [--output path] [--full-page] [--target <target-ref>] [--type png|jpeg]
+  agrune scroll <target-ref> [--to start|center|end|nearest]   # bring an offscreen target into view
   agrune read
 
 ```
