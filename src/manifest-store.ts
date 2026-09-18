@@ -81,6 +81,8 @@ export type VerifyFailReason =
   | 'bad-signature' // ed25519 verify failed → tampered or signed by a non-pinned key
   | 'malformed' // payloadJson is not parseable / not a SignedPayload object
   | 'invalid-manifest' // failed validateManifest (schema / forbidden-selector / keyFrom gates)
+  | 'untrusted-keyset' // the admin keyset did not verify against the pinned root key (Q3/Phase 3)
+  | 'untrusted-signer' // signed by a key that is not the root nor an active (non-revoked) admin
 
 export type VerifyResult =
   | { ok: true; value: VerifiedManifest }

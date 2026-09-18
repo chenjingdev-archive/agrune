@@ -1,0 +1,33 @@
+{
+  "name": "@agrune/manifest",
+  "version": "1.0.0",
+  "description": "The Agrune manifest truth: schema, validator, selector policy, and authoring helpers. The single source of truth imported by the agrune core, Studio, and the demo (SPEC §6, PLAN Phase 0 / C0). No consumer re-implements it.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT"
+}
