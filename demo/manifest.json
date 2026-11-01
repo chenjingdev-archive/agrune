@@ -1,0 +1,861 @@
+{
+  "version": 3,
+  "groups": [
+    {
+      "groupId": "navigation",
+      "name": "Primary navigation",
+      "desc": "Top-level tabs for the project manager demo.",
+      "targets": [
+        {
+          "targetId": "nav_board_tab",
+          "name": "Board tab",
+          "desc": "Open the kanban board.",
+          "selector": { "testId": "nav-board-tab" },
+          "actionKinds": ["click"],
+          "onSuccess": "You are now on the Board (kanban). Create a ticket with 'New task'; double-click a card to open its details."
+        },
+        {
+          "targetId": "nav_members_tab",
+          "name": "Members tab",
+          "desc": "Open the team member table.",
+          "selector": { "testId": "nav-members-tab" },
+          "actionKinds": ["click"],
+          "onSuccess": "You are now on the Members directory. Each row shows a teammate's role and active/inactive status."
+        },
+        {
+          "targetId": "nav_docs_tab",
+          "name": "Docs tab",
+          "desc": "Open the document viewer.",
+          "selector": { "testId": "nav-docs-tab" },
+          "actionKinds": ["click"],
+          "onSuccess": "You are now on the Docs view."
+        },
+        {
+          "targetId": "nav_workflow_tab",
+          "name": "Workflow tab",
+          "desc": "Open the workflow editor.",
+          "selector": { "testId": "nav-workflow-tab" },
+          "actionKinds": ["click"],
+          "onSuccess": "You are now on the Workflow canvas."
+        },
+        {
+          "targetId": "nav_messenger_tab",
+          "name": "Messenger tab",
+          "desc": "Open the team messenger to direct-message teammates.",
+          "selector": { "testId": "nav-messenger-tab" },
+          "actionKinds": ["click"],
+          "onSuccess": "You are now on the Messenger. Pick a conversation on the left, then type in the message box and Send. To create a ticket instead, switch to the Board tab."
+        }
+      ]
+    },
+    {
+      "groupId": "board",
+      "name": "Kanban board",
+      "desc": "Targets for creating, opening, editing, deleting, and moving tasks.",
+      "targets": [
+        {
+          "targetId": "board_new_task_button",
+          "name": "New task",
+          "desc": "Open the task creation wizard.",
+          "selector": {
+            "role": { "name": "button", "level": "New Task" },
+            "text": "New Task"
+          },
+          "actionKinds": ["click"],
+          "onSuccess": "The task creation wizard opened. It collects details across several steps; fill the fields shown on the current step, then use Next to advance."
+        },
+        {
+          "targetId": "board_column_todo",
+          "name": "To Do column",
+          "desc": "Drop tasks into the To Do column.",
+          "selector": { "css": "[data-agrune-demo=\"kanban-column\"][data-status=\"todo\"]" },
+          "actionKinds": ["hover"]
+        },
+        {
+          "targetId": "board_column_in_progress",
+          "name": "In Progress column",
+          "desc": "Drop tasks into the In Progress column.",
+          "selector": { "css": "[data-agrune-demo=\"kanban-column\"][data-status=\"in-progress\"]" },
+          "actionKinds": ["hover"]
+        },
+        {
+          "targetId": "board_column_in_review",
+          "name": "In Review column",
+          "desc": "Drop tasks into the In Review column.",
+          "selector": { "css": "[data-agrune-demo=\"kanban-column\"][data-status=\"in-review\"]" },
+          "actionKinds": ["hover"]
+        },
+        {
+          "targetId": "board_column_done",
+          "name": "Done column",
+          "desc": "Drop tasks into the Done column.",
+          "selector": { "css": "[data-agrune-demo=\"kanban-column\"][data-status=\"done\"]" },
+          "actionKinds": ["hover"]
+        },
+        {
+          "targetId": "task_card_open_indexed",
+          "name": "Open task card",
+          "desc": "Open one of the visible task cards by index.",
+          "selector": { "css": "[data-agrune-demo=\"task-card\"]" },
+          "actionKinds": ["dblclick"]
+        },
+        {
+          "targetId": "task_card_drag_source_indexed",
+          "name": "Task card drag source",
+          "desc": "Use one of the visible task cards as a drag source by index.",
+          "selector": { "css": "[data-agrune-demo=\"task-card\"]" },
+          "actionKinds": ["dblclick"]
+        },
+        {
+          "targetId": "task_card_delete_indexed",
+          "name": "Delete task",
+          "desc": "Delete one of the visible task cards by index.",
+          "selector": { "css": "button[aria-label^=\"Delete task \"]" },
+          "actionKinds": ["click"]
+        }
+      ],
+      "repeats": [
+        {
+          "repeatId": "task_cards",
+          "template": "task_${key}",
+          "keyFrom": "el.dataset.taskId ?? \"\"",
+          "nameFrom": "el.dataset.taskTitle ?? \"\"",
+          "strategy": "dom",
+          "targets": [
+            {
+              "targetId": "task_card_open",
+              "name": "Open task card",
+              "desc": "Open a task card details dialog.",
+              "selector": { "css": "[data-agrune-demo=\"task-card\"]" },
+              "actionKinds": ["dblclick"]
+            },
+            {
+              "targetId": "task_card_drag_source",
+              "name": "Task card drag source",
+              "desc": "Use the task card as a drag source for board moves.",
+              "selector": { "css": "[data-agrune-demo=\"task-card\"]" },
+              "actionKinds": ["dblclick"]
+            },
+            {
+              "targetId": "task_card_delete",
+              "name": "Delete task",
+              "desc": "Delete this task card.",
+              "selector": { "css": "button[aria-label^=\"Delete task \"]" },
+              "actionKinds": ["click"]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "groupId": "task_wizard",
+      "name": "Task creation wizard",
+      "desc": "Targets for the three-step new task wizard.",
+      "targets": [
+        {
+          "targetId": "wizard_title_input",
+          "name": "Wizard task name",
+          "desc": "Fill the task name in the new task wizard.",
+          "selector": { "css": "#task-name" },
+          "actionKinds": ["fill"]
+        },
+        {
+          "targetId": "wizard_status_select",
+          "name": "Wizard status",
+          "desc": "Open the task status picker in the new task wizard.",
+          "selector": { "css": "#task-status" },
+          "actionKinds": ["click"]
+        },
+        {
+          "targetId": "wizard_priority_select",
+          "name": "Wizard priority",
+          "desc": "Open the priority picker in the new task wizard.",
+          "selector": { "css": "#task-priority" },
+          "actionKinds": ["click"]
+        },
+        {
+          "targetId": "wizard_assignee_combobox",
+          "name": "Wizard assignee",
+          "desc": "Open the teammate picker. Type to filter, then click one name; selecting it sets the assignee and closes the picker — you do not need to reopen it to confirm.",
+          "selector": { "testId": "wizard-assignee-combobox" },
+          "actionKinds": ["click"],
+          "onSuccess": "The assignee picker opened. Type in its search field to filter teammates, then click the teammate you want from the listed options."
+        },
+        {
+          "targetId": "wizard_assignee_search",
+          "name": "Wizard assignee search",
+          "desc": "Type to filter the open assignee combobox by name or role.",
+          "selector": { "css": "#wizard-assignee-search" },
+          "actionKinds": ["fill"]
+        },
+        {
+          "targetId": "wizard_description_input",
+          "name": "Wizard description",
+          "desc": "Task description. Required: the wizard will not advance to the next step until this field has text.",
+          "selector": { "css": "#task-description" },
+          "actionKinds": ["fill"]
+        },
+        {
+          "targetId": "wizard_due_date_input",
+          "name": "Wizard due date",
+          "desc": "Fill the due date in the new task wizard.",
+          "selector": { "css": "#task-due-date" },
+          "actionKinds": ["fill"]
+        },
+        {
+          "targetId": "wizard_hours_input",
+          "name": "Wizard estimated hours",
+          "desc": "Fill the estimated hours in the new task wizard.",
+          "selector": { "css": "#task-hours" },
+          "actionKinds": ["fill"]
+        },
+        {
+          "targetId": "wizard_back_button",
+          "name": "Wizard back",
+          "desc": "Move to the previous wizard step.",
+          "selector": { "testId": "wizard-back-button" },
+          "actionKinds": ["click"],
+          "onSuccess": "Moved back to the previous wizard step; its fields are shown again."
+        },
+        {
+          "targetId": "wizard_next_button",
+          "name": "Wizard next",
+          "desc": "Move to the next wizard step.",
+          "selector": { "testId": "wizard-next-button" },
+          "actionKinds": ["click"],
+          "onSuccess": "Advanced to the next wizard step. Read the newly shown fields before continuing.",
+          "onNoEffect": "Still on the same step — Next is blocked because a required field here is empty or invalid. Complete the required field(s) shown on this step (for example, the description), then press Next again."
+        },
+        {
+          "targetId": "wizard_create_task_button",
+          "name": "Wizard create task",
+          "desc": "Create the task from the wizard confirmation step.",
+          "selector": { "testId": "wizard-create-task-button" },
+          "actionKinds": ["click"],
+          "onSuccess": "The task was created and the wizard closed — you are back on the board, where the new task now appears as a card.",
+          "onNoEffect": "The task was not created — a required field is still missing, so the wizard stayed open. Complete the required field(s), then create again."
+        },
+        {
+          "targetId": "wizard_close_button",
+          "name": "Wizard close",
+          "desc": "Close the task creation wizard.",
+          "selector": { "testId": "wizard-close-button" },
+          "actionKinds": ["click"]
+        },
+        {
+          "targetId": "wizard_description_preview_toggle",
+          "name": "Wizard description preview toggle",
+          "desc": "Show or hide the read-only description preview (step 2). Cosmetic only — reveals no new control.",
+          "selector": { "testId": "wizard-description-preview-toggle" },
+          "actionKinds": ["click"]
+        },
+        {
+          "targetId": "wizard_advanced_toggle",
+          "name": "Wizard advanced options toggle",
+          "desc": "Expand or collapse the advanced options section (step 2), which reveals the story points and reviewer fields.",
+          "selector": { "testId": "wizard-advanced-toggle" },
+          "actionKinds": ["click"]
+        },
+        {
+          "targetId": "wizard_story_points_input",
+          "name": "Wizard story points",
+          "desc": "Fill the story points estimate. Inside advanced options — expand it first.",
+          "selector": { "css": "#task-story-points" },
+          "actionKinds": ["fill"]
+        },
+        {
+          "targetId": "wizard_reviewer_input",
+          "name": "Wizard reviewer",
+          "desc": "Fill the reviewer name. Inside advanced options — expand it first.",
+          "selector": { "css": "#task-reviewer" },
+          "actionKinds": ["fill"]
+        },
+        {
+          "targetId": "wizard_tag_toggle_indexed",
+          "name": "Wizard tag toggle",
+          "desc": "Toggle one of the wizard tags by index.",
+          "selector": { "css": "[data-agrune-demo=\"wizard-tag\"]" },
+          "actionKinds": ["click"]
+        }
+      ],
+      "repeats": [
+        {
+          "repeatId": "wizard_tags",
+          "template": "wizard_tag_${key}",
+          "keyFrom": "el.dataset.tag ?? \"\"",
+          "nameFrom": "el.dataset.tag ?? (el.textContent ?? \"\").trim()",
+          "strategy": "dom",
+          "targets": [
+            {
+              "targetId": "wizard_tag_toggle",
+              "name": "Wizard tag toggle",
+              "desc": "Toggle a tag in the task creation wizard.",
+              "selector": { "css": "[data-agrune-demo=\"wizard-tag\"]" },
+              "actionKinds": ["click"]
+            }
+          ]
+        },
+        {
+          "repeatId": "wizard_assignee_options",
+          "template": "wizard_assignee_${key}",
+          "keyFrom": "(el.textContent ?? \"\").trim().toLowerCase().replace(/[^a-z0-9]+/g, \"-\").replace(/^-|-$/g, \"\")",
+          "nameFrom": "(el.textContent ?? \"\").trim()",
+          "strategy": "dom",
+          "targets": [
+            {
+              "targetId": "wizard_assignee_option",
+              "name": "Wizard assignee option",
+              "desc": "Choose a teammate from the open assignee combobox list.",
+              "selector": { "css": "[data-agrune-demo=\"wizard-assignee-option\"]" },
+              "actionKinds": ["click"],
+              "onSuccess": "Assignee set — the picker closed and the chosen teammate is now the assignee. Move on; do not reopen the picker unless you need a different person."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "groupId": "task_detail",
+      "name": "Task detail dialog",
+      "desc": "Targets for editing an existing task.",
+      "targets": [
+        {
+          "targetId": "task_detail_title_input",
+          "name": "Task detail title",
+          "desc": "Edit the task title.",
+          "selector": { "css": "#task-detail-title" },
+          "actionKinds": ["fill"]
+        },
+        {
+          "targetId": "task_detail_assignee_select",
+          "name": "Task detail assignee",
+          "desc": "Open the assignee picker in the task details dialog.",
+          "selector": { "css": "#task-detail-assignee" },
+          "actionKinds": ["click"]
+        },
+        {
+          "targetId": "task_detail_status_select",
+          "name": "Task detail status",
+          "desc": "Open the status picker in the task details dialog.",
+          "selector": { "css": "#task-detail-status" },
+          "actionKinds": ["click"]
+        },
+        {
+          "targetId": "task_detail_priority_select",
+          "name": "Task detail priority",
+          "desc": "Open the priority picker in the task details dialog.",
+          "selector": { "css": "#task-detail-priority" },
+          "actionKinds": ["click"]
+        },
+        {
+          "targetId": "task_detail_due_date_input",
+          "name": "Task detail due date",
+          "desc": "Edit the task due date.",
+          "selector": { "css": "#task-detail-due-date" },
+          "actionKinds": ["fill"]
+        },
+        {
+          "targetId": "task_detail_description_input",
+          "name": "Task detail description",
+          "desc": "Edit the task description.",
+          "selector": { "css": "#task-detail-description" },
+          "actionKinds": ["fill"]
+        },
+        {
+          "targetId": "task_detail_hours_input",
+          "name": "Task detail estimated hours",
+          "desc": "Edit the task estimate.",
+          "selector": { "css": "#task-detail-hours" },
+          "actionKinds": ["fill"]
+        },
+        {
+          "targetId": "task_detail_cancel_button",
+          "name": "Cancel task changes",
+          "desc": "Close the task detail dialog without saving.",
+          "selector": { "testId": "task-detail-cancel-button" },
+          "actionKinds": ["click"]
+        },
+        {
+          "targetId": "task_detail_save_button",
+          "name": "Save task changes",
+          "desc": "Save edits made in the task details dialog.",
+          "selector": { "testId": "task-detail-save-button" },
+          "actionKinds": ["click"]
+        },
+        {
+          "targetId": "task_detail_close_button",
+          "name": "Task detail close",
+          "desc": "Close the task detail dialog.",
+          "selector": { "testId": "task-detail-close-button" },
+          "actionKinds": ["click"]
+        },
+        {
+          "targetId": "task_detail_comment_input",
+          "name": "Task comment",
+          "desc": "Write a comment or opinion request on the task.",
+          "selector": { "css": "#task-detail-comment" },
+          "actionKinds": ["fill"]
+        },
+        {
+          "targetId": "task_detail_comment_author_select",
+          "name": "Comment recipient",
+          "desc": "Choose which teammate the comment is addressed to.",
+          "selector": { "css": "#task-detail-comment-author" },
+          "actionKinds": ["click"]
+        },
+        {
+          "targetId": "task_detail_add_comment_button",
+          "name": "Post comment",
+          "desc": "Post the written comment to the task thread.",
+          "selector": { "testId": "task-detail-add-comment" },
+          "actionKinds": ["click"]
+        },
+        {
+          "targetId": "task_detail_related_select",
+          "name": "Link related ticket",
+          "desc": "Open the picker to link a related or follow-up ticket.",
+          "selector": { "css": "#task-detail-related" },
+          "actionKinds": ["click"]
+        },
+        {
+          "targetId": "task_detail_tag_toggle_indexed",
+          "name": "Task detail tag toggle",
+          "desc": "Toggle one of the task detail tags by index.",
+          "selector": { "css": "[data-agrune-demo=\"task-detail-tag\"]" },
+          "actionKinds": ["click"]
+        }
+      ],
+      "repeats": [
+        {
+          "repeatId": "task_detail_tags",
+          "template": "task_detail_tag_${key}",
+          "keyFrom": "el.dataset.tag ?? \"\"",
+          "nameFrom": "el.dataset.tag ?? (el.textContent ?? \"\").trim()",
+          "strategy": "dom",
+          "targets": [
+            {
+              "targetId": "task_detail_tag_toggle",
+              "name": "Task detail tag toggle",
+              "desc": "Toggle a tag in the task detail dialog.",
+              "selector": { "css": "[data-agrune-demo=\"task-detail-tag\"]" },
+              "actionKinds": ["click"]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "groupId": "members",
+      "name": "Team members",
+      "desc": "Targets for member search, filtering, rows, and pagination.",
+      "targets": [
+        {
+          "targetId": "member_search_input",
+          "name": "Member search",
+          "desc": "Search members by name or email.",
+          "selector": { "testId": "member-search-input" },
+          "actionKinds": ["fill"]
+        },
+        {
+          "targetId": "member_role_filter_select",
+          "name": "Member role filter",
+          "desc": "Open the member role filter.",
+          "selector": { "testId": "member-role-filter" },
+          "actionKinds": ["click"]
+        },
+        {
+          "targetId": "member_status_filter_select",
+          "name": "Member status filter",
+          "desc": "Open the member status filter.",
+          "selector": { "testId": "member-status-filter" },
+          "actionKinds": ["click"]
+        },
+        {
+          "targetId": "member_page_size_select",
+          "name": "Member page size",
+          "desc": "Open the member table page size picker.",
+          "selector": { "testId": "member-page-size" },
+          "actionKinds": ["click"]
+        },
+        {
+          "targetId": "member_pagination_previous",
+          "name": "Previous member page",
+          "desc": "Go to the previous member page.",
+          "selector": { "testId": "member-pagination-previous" },
+          "actionKinds": ["click"]
+        },
+        {
+          "targetId": "member_pagination_next",
+          "name": "Next member page",
+          "desc": "Go to the next member page.",
+          "selector": { "testId": "member-pagination-next" },
+          "actionKinds": ["click"]
+        },
+        {
+          "targetId": "member_row_indexed",
+          "name": "Member row",
+          "desc": "Visible member table row by index.",
+          "selector": { "css": "[data-agrune-demo=\"member-row\"]" },
+          "actionKinds": ["hover"]
+        },
+        {
+          "targetId": "member_page_button_indexed",
+          "name": "Member page button",
+          "desc": "Go to a numbered member page by index.",
+          "selector": { "css": "[data-agrune-demo=\"member-page-button\"]" },
+          "actionKinds": ["click"]
+        }
+      ],
+      "repeats": [
+        {
+          "repeatId": "member_rows",
+          "template": "member_${key}",
+          "keyFrom": "el.dataset.memberId ?? \"\"",
+          "nameFrom": "el.dataset.memberName ?? \"\"",
+          "strategy": "dom",
+          "targets": [
+            {
+              "targetId": "member_row",
+              "name": "Member row",
+              "desc": "Visible member table row.",
+              "selector": { "css": "[data-agrune-demo=\"member-row\"]" },
+              "actionKinds": ["hover"]
+            },
+            {
+              "targetId": "member_create_ticket",
+              "name": "Create ticket for member",
+              "desc": "Open the new-task wizard with this member pre-assigned.",
+              "selector": { "css": "[data-agrune-demo=\"member-create-ticket\"]" },
+              "actionKinds": ["click"]
+            },
+            {
+              "targetId": "member_message",
+              "name": "Message member",
+              "desc": "Open the messenger conversation with this member.",
+              "selector": { "css": "[data-agrune-demo=\"member-message\"]" },
+              "actionKinds": ["click"]
+            }
+          ]
+        },
+        {
+          "repeatId": "member_page_buttons",
+          "template": "member_page_${key}",
+          "keyFrom": "el.dataset.page ?? (el.textContent ?? \"\").trim()",
+          "nameFrom": "(el.textContent ?? \"\").trim()",
+          "strategy": "dom",
+          "targets": [
+            {
+              "targetId": "member_page_button",
+              "name": "Member page button",
+              "desc": "Go to a numbered member page.",
+              "selector": { "css": "[data-agrune-demo=\"member-page-button\"]" },
+              "actionKinds": ["click"]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "groupId": "documents",
+      "name": "Document viewer",
+      "desc": "Targets for selecting and controlling project documents.",
+      "targets": [
+        {
+          "targetId": "doc_refresh_button",
+          "name": "Refresh document",
+          "desc": "Reload the selected document iframe.",
+          "selector": { "testId": "doc-refresh-button" },
+          "actionKinds": ["click"]
+        },
+        {
+          "targetId": "doc_expand_toggle",
+          "name": "Expand document",
+          "desc": "Toggle the document viewer height.",
+          "selector": { "testId": "doc-expand-toggle" },
+          "actionKinds": ["click"]
+        },
+        {
+          "targetId": "doc_open_new_tab_button",
+          "name": "Open document in new tab",
+          "desc": "Open the selected document in a new browser tab.",
+          "selector": { "testId": "doc-open-new-tab" },
+          "actionKinds": ["click"]
+        },
+        {
+          "targetId": "doc_iframe",
+          "name": "Document iframe",
+          "desc": "The embedded selected document.",
+          "selector": { "testId": "doc-iframe" },
+          "actionKinds": ["hover"]
+        },
+        {
+          "targetId": "document_card_select_indexed",
+          "name": "Select document",
+          "desc": "Select one of the document cards by index.",
+          "selector": { "css": "[data-testid^=\"doc-card-\"]" },
+          "actionKinds": ["click"]
+        }
+      ],
+      "repeats": [
+        {
+          "repeatId": "document_cards",
+          "template": "document_${key}",
+          "keyFrom": "(el.getAttribute(\"data-testid\") ?? \"\").replace(\"doc-card-\", \"\")",
+          "nameFrom": "(el.querySelector(\"[data-slot='card-title']\")?.textContent ?? el.textContent ?? \"\").trim()",
+          "strategy": "dom",
+          "targets": [
+            {
+              "targetId": "document_card_select",
+              "name": "Select document",
+              "desc": "Select a document card for viewing.",
+              "selector": { "css": "[data-testid^=\"doc-card-\"]" },
+              "actionKinds": ["click"]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "groupId": "workflow",
+      "name": "Workflow editor",
+      "desc": "Targets for workflow canvas controls, nodes, handles, and edges. Node positions are reported as stable canvas coordinates; browser_drag with destinationCoords moves a node to a canvas point (auto-converted to viewport).",
+      "canvas": {
+        "viewportSelector": ".agrune-workflow-flow .react-flow__viewport",
+        "paneSelector": "[data-agrune-demo=\"workflow-canvas\"]"
+      },
+      "targets": [
+        {
+          "targetId": "workflow_canvas_pane",
+          "name": "Workflow canvas pane",
+          "desc": "The interactive React Flow pane.",
+          "selector": { "css": "[data-agrune-demo=\"workflow-canvas\"] .react-flow__pane" },
+          "actionKinds": ["click", "contextmenu", "hover"]
+        },
+        {
+          "targetId": "workflow_zoom_in_button",
+          "name": "Workflow zoom in",
+          "desc": "Zoom into the workflow canvas.",
+          "selector": {
+            "text": "Zoom In",
+            "css": ".agrune-workflow-flow .react-flow__controls-zoomin"
+          },
+          "actionKinds": ["click"]
+        },
+        {
+          "targetId": "workflow_zoom_out_button",
+          "name": "Workflow zoom out",
+          "desc": "Zoom out of the workflow canvas.",
+          "selector": {
+            "text": "Zoom Out",
+            "css": ".agrune-workflow-flow .react-flow__controls-zoomout"
+          },
+          "actionKinds": ["click"]
+        },
+        {
+          "targetId": "workflow_fit_view_button",
+          "name": "Workflow fit view",
+          "desc": "Fit the workflow to the viewport.",
+          "selector": {
+            "text": "Fit View",
+            "css": ".agrune-workflow-flow .react-flow__controls-fitview"
+          },
+          "actionKinds": ["click"]
+        },
+        {
+          "targetId": "workflow_interactive_toggle",
+          "name": "Workflow interactive toggle",
+          "desc": "Toggle interactive mode for the workflow canvas.",
+          "selector": {
+            "text": "Toggle Interactivity",
+            "css": ".agrune-workflow-flow .react-flow__controls-interactive"
+          },
+          "actionKinds": ["click"]
+        },
+        {
+          "targetId": "workflow_minimap",
+          "name": "Workflow minimap",
+          "desc": "The workflow minimap viewport.",
+          "selector": { "css": ".agrune-workflow-flow [data-testid=\"rf__minimap\"] .react-flow__minimap-svg" },
+          "actionKinds": ["hover"]
+        },
+        {
+          "targetId": "workflow_node_body_indexed",
+          "name": "Workflow node",
+          "desc": "A draggable workflow node by index.",
+          "selector": { "css": "[data-agrune-demo=\"workflow-node\"]" },
+          "actionKinds": ["click", "contextmenu", "hover"]
+        },
+        {
+          "targetId": "workflow_source_handle_indexed",
+          "name": "Workflow source handle",
+          "desc": "Connection source handle by index.",
+          "selector": { "css": ".react-flow__handle.source" },
+          "actionKinds": ["click", "hover"]
+        },
+        {
+          "targetId": "workflow_target_handle_indexed",
+          "name": "Workflow target handle",
+          "desc": "Connection target handle by index.",
+          "selector": { "css": ".react-flow__handle.target" },
+          "actionKinds": ["click", "hover"]
+        },
+        {
+          "targetId": "workflow_edge_delete_indexed",
+          "name": "Delete workflow edge",
+          "desc": "Click a workflow edge by index to delete it.",
+          "selector": { "css": ".react-flow__edge-interaction" },
+          "actionKinds": ["click", "hover"]
+        }
+      ],
+      "repeats": [
+        {
+          "repeatId": "workflow_nodes",
+          "template": "workflow_node_${key}",
+          "keyFrom": "el.dataset.workflowNodeId ?? \"\"",
+          "nameFrom": "(el.textContent ?? \"\").trim()",
+          "strategy": "dom",
+          "targets": [
+            {
+              "targetId": "workflow_node_body",
+              "name": "Workflow node",
+              "desc": "A draggable workflow node.",
+              "selector": { "css": "[data-agrune-demo=\"workflow-node\"]" },
+              "actionKinds": ["click", "contextmenu", "hover"]
+            },
+            {
+              "targetId": "workflow_source_handle",
+              "name": "Workflow source handle",
+              "desc": "Connection source handle for this node.",
+              "selector": { "css": ".react-flow__handle.source" },
+              "actionKinds": ["click", "hover"]
+            },
+            {
+              "targetId": "workflow_target_handle",
+              "name": "Workflow target handle",
+              "desc": "Connection target handle for this node.",
+              "selector": { "css": ".react-flow__handle.target" },
+              "actionKinds": ["click", "hover"]
+            }
+          ]
+        },
+        {
+          "repeatId": "workflow_edges",
+          "template": "workflow_edge_${key}",
+          "keyFrom": "el.closest(\"[data-id]\")?.getAttribute(\"data-id\") ?? \"\"",
+          "nameFrom": "el.closest(\"[aria-label]\")?.getAttribute(\"aria-label\") ?? el.closest(\"[data-id]\")?.getAttribute(\"data-id\") ?? \"Workflow edge\"",
+          "strategy": "dom",
+          "targets": [
+            {
+              "targetId": "workflow_edge_delete",
+              "name": "Delete workflow edge",
+              "desc": "Click a workflow edge to delete it.",
+              "selector": { "css": ".react-flow__edge-interaction" },
+              "actionKinds": ["click", "hover"]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "groupId": "messenger",
+      "name": "Team messenger",
+      "desc": "Direct-message teammates: pick a conversation, type, and send.",
+      "targets": [
+        {
+          "targetId": "messenger_input",
+          "name": "Message input",
+          "desc": "Type a direct message to the selected teammate.",
+          "selector": { "css": "#messenger-input" },
+          "actionKinds": ["fill"]
+        },
+        {
+          "targetId": "messenger_send_button",
+          "name": "Send message",
+          "desc": "Send the typed direct message.",
+          "selector": { "testId": "messenger-send-button" },
+          "actionKinds": ["click"]
+        },
+        {
+          "targetId": "messenger_conversation_indexed",
+          "name": "Open conversation",
+          "desc": "Open one of the teammate conversations by index.",
+          "selector": { "css": "[data-agrune-demo=\"messenger-conversation\"]" },
+          "actionKinds": ["click"]
+        }
+      ],
+      "repeats": [
+        {
+          "repeatId": "messenger_conversations",
+          "template": "conversation_${key}",
+          "keyFrom": "el.dataset.memberId ?? \"\"",
+          "nameFrom": "(el.textContent ?? \"\").trim()",
+          "strategy": "dom",
+          "targets": [
+            {
+              "targetId": "messenger_conversation",
+              "name": "Open conversation",
+              "desc": "Open the conversation with this teammate.",
+              "selector": { "css": "[data-agrune-demo=\"messenger-conversation\"]" },
+              "actionKinds": ["click"]
+            }
+          ]
+        },
+        {
+          "repeatId": "messenger_messages",
+          "template": "message_${key}",
+          "keyFrom": "el.dataset.messageId ?? \"\"",
+          "nameFrom": "(el.textContent ?? \"\").trim()",
+          "strategy": "dom",
+          "targets": [
+            {
+              "targetId": "messenger_message",
+              "name": "Message bubble",
+              "desc": "A message in the current conversation.",
+              "selector": { "css": "[data-agrune-demo=\"messenger-message\"]" },
+              "actionKinds": ["hover"]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "groupId": "select_options",
+      "name": "Open select options",
+      "desc": "Generic Radix select options visible after opening any select trigger.",
+      "targets": [
+        {
+          "targetId": "select_option_indexed",
+          "name": "Select option",
+          "desc": "Choose one of the visible options from an open Radix Select list by index.",
+          "selector": {
+            "role": { "name": "option" },
+            "css": "[role=\"option\"]"
+          },
+          "actionKinds": ["click"]
+        }
+      ],
+      "repeats": [
+        {
+          "repeatId": "select_options",
+          "template": "select_option_${key}",
+          "keyFrom": "(el.textContent ?? \"\").trim().toLowerCase().replace(/[^a-z0-9]+/g, \"-\").replace(/^-|-$/g, \"\")",
+          "nameFrom": "(el.textContent ?? \"\").trim()",
+          "strategy": "dom",
+          "targets": [
+            {
+              "targetId": "select_option",
+              "name": "Select option",
+              "desc": "Choose a visible option from an open Radix Select list.",
+              "selector": {
+                "role": { "name": "option" },
+                "css": "[role=\"option\"]"
+              },
+              "actionKinds": ["click"],
+              "onSuccess": "Option selected — the dropdown closed and the value is now set. Continue; do not reopen this dropdown unless you need to change the value."
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
