@@ -1,0 +1,965 @@
+.scenario-editor-layer {
+  position: fixed;
+  z-index: 1000;
+  inset: 0;
+  display: flex;
+  justify-content: flex-end;
+  color: #eef4e8;
+  color-scheme: dark;
+  font-family: "SF Pro Text", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.scenario-editor-layer *,
+.scenario-editor-layer *::before,
+.scenario-editor-layer *::after {
+  box-sizing: border-box;
+}
+
+.scenario-editor-scrim {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: rgba(4, 5, 4, 0.67);
+  backdrop-filter: blur(5px);
+  cursor: default;
+  animation: scenario-scrim-in 150ms ease-out;
+}
+
+.scenario-editor-sheet {
+  min-inline-size: 0;
+  position: relative;
+  width: min(980px, calc(100vw - 64px));
+  height: 100%;
+  display: grid;
+  grid-template-rows: 62px minmax(0, 1fr) auto;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-left: 1px solid rgba(233, 241, 221, 0.14);
+  background:
+    radial-gradient(circle at 70% -10%, rgba(199, 255, 104, 0.06), transparent 30%),
+    #0e100d;
+  box-shadow: -28px 0 80px rgba(0, 0, 0, 0.46);
+  animation: scenario-sheet-in 190ms cubic-bezier(.2, .85, .3, 1);
+  overflow: hidden;
+}
+
+.scenario-editor-sheet button:focus-visible,
+.scenario-editor-sheet input:focus-visible,
+.scenario-editor-sheet textarea:focus-visible,
+.scenario-editor-sheet select:focus-visible {
+  outline: 2px solid var(--next-acid, #c7ff68);
+  outline-offset: 2px;
+}
+
+.scenario-editor-titlebar {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(200px, 1fr) auto 38px;
+  align-items: center;
+  gap: 16px;
+  padding: 0 14px 0 19px;
+  border-bottom: 1px solid rgba(233, 241, 221, 0.09);
+  background: rgba(15, 17, 14, 0.94);
+}
+
+.scenario-editor-brand {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.scenario-editor-brand > svg {
+  color: #c7ff68;
+}
+
+.scenario-editor-brand > div {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.scenario-editor-brand span,
+.scenario-editor-step-heading span,
+.scenario-editor-detail > header span {
+  color: #727b6d;
+  font-family: "SFMono-Regular", "JetBrains Mono", monospace;
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: .11em;
+}
+
+.scenario-editor-brand strong {
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 620;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scenario-editor-mode {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid rgba(233, 241, 221, 0.08);
+  border-radius: 7px;
+  background: #151813;
+}
+
+.scenario-editor-mode button,
+.scenario-editor-close,
+.scenario-editor-detail > header button,
+.scenario-editor-step-heading button,
+.scenario-json-editor header button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border: 0;
+  color: #7f897a;
+  cursor: pointer;
+}
+
+.scenario-editor-mode button {
+  height: 32px;
+  padding: 0 9px;
+  border-radius: 5px;
+  background: transparent;
+  font-size: 12px;
+}
+
+.scenario-editor-mode button:hover,
+.scenario-editor-mode button.active {
+  background: #252a22;
+  color: #eef4e8;
+}
+
+.scenario-editor-mode button.active {
+  box-shadow: 0 0 0 1px rgba(233, 241, 221, 0.06);
+}
+
+.scenario-editor-close {
+  width: 32px;
+  height: 32px;
+  border-radius: 7px;
+  background: transparent;
+}
+
+.scenario-editor-close:hover,
+.scenario-editor-detail > header button:hover:not(:disabled) {
+  background: #242a21;
+  color: #eef4e8;
+}
+
+.scenario-editor-body {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 360px minmax(0, 1fr);
+}
+
+.scenario-editor-outline {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto 48px minmax(0, 1fr);
+  border-right: 1px solid rgba(233, 241, 221, 0.09);
+  background: #10120f;
+}
+
+.scenario-editor-meta {
+  display: grid;
+  gap: 12px;
+  padding: 17px 16px;
+  border-bottom: 1px solid rgba(233, 241, 221, 0.08);
+}
+
+.scenario-editor-meta-grid,
+.scenario-inline-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: end;
+  gap: 10px;
+}
+
+.scenario-field {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.scenario-field > span {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  color: #9ea79a;
+  font-size: 12px;
+  font-weight: 570;
+}
+
+.scenario-field > span small {
+  min-width: 0;
+  color: #8d9787;
+  font-size: 12px;
+  font-weight: 430;
+  text-align: right;
+}
+
+.scenario-field input,
+.scenario-field textarea,
+.scenario-field select,
+.scenario-json-editor textarea {
+  width: 100%;
+  border: 1px solid rgba(233, 241, 221, 0.11);
+  border-radius: 6px;
+  outline: none;
+  background: #151813;
+  color: #eef4e8;
+  font: inherit;
+  font-size: 13px;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.scenario-field input,
+.scenario-field select {
+  height: 38px;
+  padding: 0 9px;
+}
+
+.scenario-field textarea {
+  min-height: 62px;
+  padding: 8px 9px;
+  resize: vertical;
+  line-height: 1.45;
+}
+
+.scenario-field input:focus,
+.scenario-field textarea:focus,
+.scenario-field select:focus,
+.scenario-json-editor textarea:focus {
+  border-color: rgba(199, 255, 104, 0.48);
+  box-shadow: 0 0 0 3px rgba(199, 255, 104, 0.06);
+}
+
+.scenario-field.invalid input,
+.scenario-field.invalid textarea,
+.scenario-field.invalid select {
+  border-color: rgba(255, 117, 111, 0.48);
+}
+
+.scenario-field em {
+  color: #ff8d88;
+  font-size: 12px;
+  font-style: normal;
+  line-height: 1.3;
+}
+
+.scenario-editor-step-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px 0 17px;
+  border-bottom: 1px solid rgba(233, 241, 221, 0.08);
+}
+
+.scenario-editor-step-heading > div {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.scenario-editor-step-heading strong {
+  min-width: 18px;
+  padding: 2px 5px;
+  border-radius: 4px;
+  background: #242a21;
+  color: #acb5a5;
+  font-family: "SFMono-Regular", monospace;
+  font-size: 12px;
+  text-align: center;
+}
+
+.scenario-editor-step-heading button,
+.scenario-json-editor header button {
+  height: 32px;
+  padding: 0 8px;
+  border-radius: 5px;
+  background: rgba(199, 255, 104, .1);
+  color: #c7ff68;
+  font-size: 12px;
+}
+
+.scenario-editor-step-heading button:hover,
+.scenario-json-editor header button:hover {
+  background: rgba(199, 255, 104, .16);
+}
+
+.scenario-editor-step-list {
+  min-height: 0;
+  overflow: auto;
+  padding: 6px 7px 22px;
+}
+
+.scenario-editor-step-list > button {
+  width: 100%;
+  min-height: 64px;
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 9px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: #687162;
+  text-align: left;
+  cursor: pointer;
+}
+
+.scenario-editor-step-list > button:hover {
+  background: #181b16;
+}
+
+.scenario-editor-step-list > button.selected {
+  border-color: rgba(199, 255, 104, .17);
+  background: rgba(199, 255, 104, .07);
+  color: #9da696;
+}
+
+.scenario-editor-step-list > button > span {
+  font-family: "SFMono-Regular", monospace;
+  font-size: 12px;
+}
+
+.scenario-editor-step-list > button > div {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.scenario-editor-step-list > button strong {
+  overflow: hidden;
+  color: #d8ded2;
+  font-size: 13px;
+  font-weight: 570;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scenario-editor-step-list > button code {
+  overflow: hidden;
+  color: #697263;
+  font-family: "SFMono-Regular", monospace;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scenario-editor-step-list .invalid {
+  color: #ff756f;
+}
+
+.scenario-editor-no-steps,
+.scenario-editor-empty-detail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #697263;
+  text-align: center;
+}
+
+.scenario-editor-no-steps {
+  min-height: 145px;
+  gap: 5px;
+  font-size: 12px;
+}
+
+.scenario-editor-no-steps strong {
+  margin-top: 4px;
+  color: #aeb7a8;
+}
+
+.scenario-editor-detail {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: 72px minmax(0, 1fr);
+  background: #0c0e0b;
+}
+
+.scenario-editor-detail > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 0 22px;
+  border-bottom: 1px solid rgba(233, 241, 221, 0.08);
+}
+
+.scenario-editor-detail > header h2 {
+  margin: 4px 0 0;
+  font-size: 17px;
+  font-weight: 620;
+  letter-spacing: -.015em;
+}
+
+.scenario-editor-detail > header > div:last-child {
+  display: flex;
+  gap: 3px;
+}
+
+.scenario-editor-detail > header button {
+  width: 29px;
+  height: 29px;
+  border-radius: 6px;
+  background: transparent;
+}
+
+.scenario-editor-detail > header button:disabled {
+  opacity: .25;
+  cursor: default;
+}
+
+.scenario-editor-detail > header button.danger:hover {
+  background: rgba(255, 117, 111, .1);
+  color: #ff756f;
+}
+
+.scenario-editor-fields {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  overflow: auto;
+  padding: 22px 24px 60px;
+}
+
+.scenario-editor-fields > .scenario-field > span,
+.scenario-inline-fields > .scenario-field > span {
+  font-size: 13px;
+}
+
+.scenario-editor-fields > .scenario-field input,
+.scenario-editor-fields > .scenario-field select,
+.scenario-inline-fields .scenario-field input,
+.scenario-inline-fields .scenario-field select {
+  height: 40px;
+  font-size: 13px;
+}
+
+.scenario-editor-fields > .scenario-field textarea {
+  min-height: 92px;
+  font-size: 13px;
+}
+
+.scenario-secret-toggle,
+.scenario-check-field {
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+}
+
+.scenario-secret-toggle label,
+.scenario-check-field {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  color: #9ea79a;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.scenario-secret-toggle label:has(input:disabled) {
+  cursor: not-allowed;
+  opacity: .72;
+}
+
+.scenario-secret-toggle small {
+  padding: 2px 5px;
+  border: 1px solid rgba(240, 182, 92, .22);
+  border-radius: 999px;
+  color: #c99b5c;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+
+.scenario-secret-toggle input,
+.scenario-check-field input {
+  accent-color: #c7ff68;
+}
+
+.scenario-secret-unavailable {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px;
+  padding: 10px 11px;
+  border: 1px solid rgba(240, 182, 92, .2);
+  border-radius: 7px;
+  background: rgba(240, 182, 92, .055);
+  color: #9b8a70;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.scenario-secret-unavailable svg {
+  margin-top: 1px;
+  color: #d5a45f;
+}
+
+.scenario-secret-unavailable code {
+  color: #c9b08a;
+  font-family: "SFMono-Regular", "SF Mono", Consolas, monospace;
+}
+
+.scenario-field input[readonly] {
+  cursor: default;
+  color: #8f978a;
+  background: rgba(255, 255, 255, .018);
+}
+
+.scenario-playwright-recovery {
+  display: grid;
+  gap: 11px;
+  padding: 14px;
+  border: 1px solid rgba(121, 184, 255, .16);
+  border-radius: 9px;
+  background:
+    linear-gradient(135deg, rgba(121, 184, 255, .055), transparent 58%),
+    rgba(18, 23, 22, .82);
+  transition: border-color 140ms ease, background-color 140ms ease;
+}
+
+.scenario-playwright-recovery.enabled {
+  border-color: rgba(121, 184, 255, .34);
+  background:
+    linear-gradient(135deg, rgba(121, 184, 255, .09), transparent 58%),
+    rgba(18, 23, 22, .9);
+}
+
+.scenario-playwright-recovery.unavailable {
+  border-color: rgba(240, 182, 92, .16);
+  background: rgba(240, 182, 92, .035);
+}
+
+.scenario-playwright-recovery > header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.scenario-playwright-recovery > header > div {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.scenario-playwright-recovery > header strong {
+  color: #dce7ec;
+  font-size: 13px;
+  font-weight: 620;
+}
+
+.scenario-playwright-recovery > header > div > span {
+  padding: 2px 6px;
+  border: 1px solid rgba(121, 184, 255, .2);
+  border-radius: 999px;
+  color: #8eb9db;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.scenario-playwright-recovery > p {
+  margin: 0;
+  color: #83918a;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.scenario-playwright-switch {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #aab7b0;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.scenario-playwright-switch:has(input:disabled) {
+  cursor: not-allowed;
+  opacity: .55;
+}
+
+.scenario-playwright-switch input,
+.scenario-playwright-exact input {
+  accent-color: #79b8ff;
+}
+
+.scenario-playwright-off {
+  color: #66736d;
+  font-size: 12px;
+}
+
+.scenario-playwright-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: end;
+  gap: 12px 10px;
+  padding-top: 2px;
+}
+
+.scenario-playwright-fields > .scenario-field > span,
+.scenario-playwright-name-field .scenario-field > span {
+  font-size: 12px;
+}
+
+.scenario-playwright-fields .scenario-field input,
+.scenario-playwright-fields .scenario-field select,
+.scenario-playwright-name-field .scenario-field input {
+  height: 40px;
+  font-size: 13px;
+}
+
+.scenario-playwright-name-field {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+
+.scenario-playwright-exact {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: #aab5ae;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.scenario-playwright-exact input {
+  margin-top: 2px;
+}
+
+.scenario-playwright-exact > span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.scenario-playwright-exact strong {
+  color: #b9c5bf;
+  font-size: 12px;
+  font-weight: 570;
+}
+
+.scenario-playwright-exact small {
+  color: #69766f;
+  font-size: 12px;
+}
+
+.scenario-playwright-unavailable {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px;
+  color: #a58d6c;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.scenario-playwright-unavailable svg {
+  margin-top: 2px;
+  color: #d5a45f;
+}
+
+.scenario-playwright-error {
+  color: #ff8d88;
+  font-size: 12px;
+  font-style: normal;
+  line-height: 1.35;
+}
+
+.scenario-closed-assertion {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 14px;
+  border: 1px solid rgba(199, 255, 104, .12);
+  border-radius: 8px;
+  background: rgba(199, 255, 104, .055);
+  color: #c7ff68;
+}
+
+.scenario-closed-assertion > div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.scenario-closed-assertion strong {
+  color: #dce4d5;
+  font-size: 13px;
+}
+
+.scenario-closed-assertion span {
+  color: #7e8878;
+  font-size: 12px;
+}
+
+.scenario-editor-empty-detail {
+  grid-row: 1 / -1;
+  padding: 50px;
+}
+
+.scenario-editor-empty-detail > svg {
+  color: #c7ff68;
+}
+
+.scenario-editor-empty-detail h2 {
+  margin: 13px 0 7px;
+  font-size: 18px;
+}
+
+.scenario-editor-empty-detail p {
+  max-width: 370px;
+  margin: 0 0 17px;
+  color: #727b6d;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.scenario-editor-empty-detail button {
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 6px;
+  background: #c7ff68;
+  color: #17200e;
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.scenario-json-editor {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: 62px minmax(0, 1fr) auto;
+  padding: 0 18px 16px;
+  background: #0a0c09;
+}
+
+.scenario-json-editor header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.scenario-json-editor header > div {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.scenario-json-editor header > div > svg {
+  color: #c7ff68;
+}
+
+.scenario-json-editor header header,
+.scenario-json-editor header div div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.scenario-json-editor header strong {
+  font-size: 13px;
+}
+
+.scenario-json-editor header span {
+  color: #727b6d;
+  font-size: 12px;
+}
+
+.scenario-json-editor textarea {
+  min-height: 0;
+  padding: 17px 19px;
+  resize: none;
+  background: #10130f;
+  color: #dce8d1;
+  font-family: "SFMono-Regular", "JetBrains Mono", monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  tab-size: 2;
+}
+
+.scenario-json-error {
+  max-height: 112px;
+  margin: 9px 0 0;
+  overflow: auto;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 117, 111, .17);
+  border-radius: 6px;
+  background: rgba(255, 117, 111, .06);
+  color: #ff938e;
+  font-family: "SFMono-Regular", monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.scenario-editor-footer {
+  position: relative;
+  min-height: 66px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 14px 10px 20px;
+  border-top: 1px solid rgba(233, 241, 221, 0.1);
+  background: #111410;
+}
+
+.scenario-editor-footer > div:first-child,
+.scenario-editor-actions {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.scenario-editor-footer > div:first-child {
+  min-width: 0;
+  color: #c7ff68;
+  font-size: 12px;
+}
+
+.scenario-editor-footer > div:first-child.invalid {
+  color: #ff756f;
+}
+
+.scenario-editor-footer > div:first-child button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 12px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.scenario-editor-actions button {
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 13px;
+  border: 1px solid rgba(233, 241, 221, .11);
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 580;
+  cursor: pointer;
+}
+
+.scenario-editor-actions button.secondary {
+  background: #1a1e18;
+  color: #c2cabd;
+}
+
+.scenario-editor-actions button.primary {
+  border-color: #c7ff68;
+  background: #c7ff68;
+  color: #17200e;
+}
+
+.scenario-editor-actions button.danger {
+  border-color: rgba(255, 117, 111, 0.34);
+  background: rgba(255, 117, 111, 0.1);
+  color: #ff958f;
+}
+
+.scenario-editor-actions button:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+.scenario-editor-actions button:disabled {
+  opacity: .45;
+  cursor: wait;
+}
+
+.scenario-editor-issues {
+  position: absolute;
+  right: 14px;
+  bottom: 72px;
+  width: min(520px, calc(100% - 28px));
+  max-height: 220px;
+  display: flex !important;
+  flex-direction: column;
+  align-items: stretch !important;
+  gap: 0 !important;
+  overflow: auto;
+  padding: 7px;
+  border: 1px solid rgba(255, 117, 111, .18);
+  border-radius: 8px;
+  background: #171512;
+  box-shadow: 0 12px 40px rgba(0,0,0,.4);
+}
+
+.scenario-editor-issues > div {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: 10px;
+  padding: 7px 8px;
+  border-bottom: 1px solid rgba(233, 241, 221, .06);
+  color: #c1c8bb;
+  font-size: 12px;
+}
+
+.scenario-editor-issues > div:last-child {
+  border-bottom: 0;
+}
+
+.scenario-editor-issues code {
+  color: #ff8b86;
+  font-family: "SFMono-Regular", monospace;
+  overflow-wrap: anywhere;
+}
+
+@keyframes scenario-scrim-in { from { opacity: 0; } }
+@keyframes scenario-sheet-in { from { transform: translateX(32px); opacity: .75; } }
+
+@media (max-width: 900px) {
+  .scenario-editor-sheet { width: calc(100vw - 36px); }
+  .scenario-editor-body { grid-template-columns: 320px minmax(0, 1fr); }
+}
+
+@media (max-width: 720px) {
+  .scenario-editor-sheet { width: 100vw; }
+  .scenario-editor-body { grid-template-columns: minmax(250px, .8fr) minmax(320px, 1fr); }
+  .scenario-editor-titlebar { grid-template-columns: minmax(150px, 1fr) auto 36px; }
+  .scenario-playwright-fields { grid-template-columns: minmax(0, 1fr); }
+  .scenario-playwright-name-field { grid-column: auto; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scenario-editor-sheet,
+  .scenario-editor-scrim { animation: none; }
+}
